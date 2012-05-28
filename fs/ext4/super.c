@@ -3302,7 +3302,8 @@ no_journal:
 		goto failed_mount4;
 	}
 
-	ext4_setup_super(sb, es, sb->s_flags & MS_RDONLY);
+	if (ext4_setup_super(sb, es, sb->s_flags & MS_RDONLY))
+		sb->s_flags |= MS_RDONLY;
 
 	
 	if (sbi->s_inode_size > EXT4_GOOD_OLD_INODE_SIZE) {
