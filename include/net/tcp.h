@@ -206,6 +206,7 @@ extern __be32 sysctl_tcp_syn_fail;
 #endif 
 extern int sysctl_tcp_delack_seg;
 extern int sysctl_tcp_use_userconfig;
+extern int sysctl_tcp_challenge_ack_limit;
 
 extern atomic_long_t tcp_memory_allocated;
 extern struct percpu_counter tcp_sockets_allocated;
