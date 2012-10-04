@@ -1423,9 +1423,13 @@ static void cgroup_task_migrate(struct cgroup *cgrp, struct cgroup *oldcgrp,
 		list_move(&tsk->cg_list, &newcg->tasks);
 	write_unlock(&css_set_lock);
 
-	put_css_set(oldcg);
-
+	/*
+	 * We just gained a reference on oldcg by taking it from the task. As
+	 * trading it for newcg is protected by cgroup_mutex, we're safe to drop
+	 * it here; it will be freed under RCU.
+	 */
 	set_bit(CGRP_RELEASABLE, &oldcgrp->flags);
+	put_css_set(oldcg);
 }
 
 int cgroup_attach_task(struct cgroup *cgrp, struct task_struct *tsk)
