@@ -306,6 +306,7 @@ void kernel_restart(char *cmd)
 	printk(KERN_EMERG "%s: system_dirty=%d\n", __func__, is_system_dirty());
 #endif
 	kernel_restart_prepare(cmd);
+	disable_nonboot_cpus();
 	if (!cmd)
 		printk(KERN_EMERG "Restarting system.\n");
 	else
