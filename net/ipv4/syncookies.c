@@ -280,8 +280,14 @@ struct sock *cookie_v4_check(struct sock *sk, struct sk_buff *skb,
 	req->expires	= 0UL;
 	req->retrans	= 0;
 
-	flowi4_init_output(&fl4, 0, ireq->ir_mark, RT_CONN_FLAGS(sk),
-			   RT_SCOPE_UNIVERSE, IPPROTO_TCP,
+	/*
+	 * We need to lookup the route here to get at the correct
+	 * window size. We should better make sure that the window size
+	 * hasn't changed since we received the original syn, but I see
+	 * no easy way to do this.
+	 */
+	flowi4_init_output(&fl4, sk->sk_bound_dev_if, sk->sk_mark,
+			   RT_CONN_FLAGS(sk), RT_SCOPE_UNIVERSE, IPPROTO_TCP,
 			   inet_sk_flowi_flags(sk),
 			   (opt && opt->srr) ? opt->faddr : ireq->rmt_addr,
 			   ireq->loc_addr, th->source, th->dest,
