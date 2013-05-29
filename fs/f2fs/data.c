@@ -975,7 +975,7 @@ submit_and_realloc:
 			}
 
 			bio = bio_alloc(GFP_KERNEL,
-				min_t(int, nr_pages, bio_get_nr_vecs(bdev)));
+				min_t(int, nr_pages, BIO_MAX_PAGES));
 			if (!bio) {
 				if (ctx)
 					f2fs_release_crypto_ctx(ctx);
@@ -1599,7 +1599,7 @@ static ssize_t f2fs_direct_IO(int rw, struct kiocb *iocb,
 
 	trace_f2fs_direct_IO_enter(inode, offset, count, rw);
 
-	if (iov_iter_rw(iter) == WRITE) {
+	if (rw & WRITE) {
 		__allocate_data_blocks(inode, offset, count);
 		if (unlikely(f2fs_cp_error(F2FS_I_SB(inode)))) {
 			err = -EIO;
@@ -1607,9 +1607,10 @@ static ssize_t f2fs_direct_IO(int rw, struct kiocb *iocb,
 		}
 	}
 
-	err = blockdev_direct_IO(iocb, inode, iter, offset, get_data_block_dio);
+	err = blockdev_direct_IO(rw, iocb, inode, iov, offset, nr_segs,
+							get_data_block_dio);
 out:
-	if (err < 0 && iov_iter_rw(iter) == WRITE)
+	if (err < 0 && (rw & WRITE))
 		f2fs_write_failed(mapping, offset + count);
 
 	trace_f2fs_direct_IO_exit(inode, offset, count, rw, err);
