@@ -696,6 +696,7 @@ static void reset_config(struct usb_composite_dev *cdev)
 	printk("[USB]%s disable-\n",__func__);
 #endif
 	cdev->config = NULL;
+	cdev->delayed_status = 0;
 }
 
 static int set_config(struct usb_composite_dev *cdev,
