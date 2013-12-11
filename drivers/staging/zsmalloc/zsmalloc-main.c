@@ -103,13 +103,10 @@ struct zs_pool {
 #define CLASS_IDX_MASK	((1 << CLASS_IDX_BITS) - 1)
 #define FULLNESS_MASK	((1 << FULLNESS_BITS) - 1)
 
-#if defined(CONFIG_ARM) && !defined(MODULE)
-#define USE_PGTABLE_MAPPING
-#endif
 
 struct mapping_area {
-#ifdef USE_PGTABLE_MAPPING
-	struct vm_struct *vm; 
+#ifdef CONFIG_PGTABLE_MAPPING
+	struct vm_struct *vm; /* vm area for mapping object that span pages */
 #else
 	char *vm_buf; 
 #endif
@@ -467,7 +464,7 @@ static struct page *find_get_zspage(struct size_class *class)
 	return page;
 }
 
-#ifdef USE_PGTABLE_MAPPING
+#ifdef CONFIG_PGTABLE_MAPPING
 static inline int __zs_cpu_up(struct mapping_area *area)
 {
 	if (area->vm)
@@ -501,7 +498,7 @@ static inline void __zs_unmap_object(struct mapping_area *area,
 	unmap_kernel_range(addr, PAGE_SIZE * 2);
 }
 
-#else 
+#else /* CONFIG_PGTABLE_MAPPING */
 
 static inline int __zs_cpu_up(struct mapping_area *area)
 {
@@ -575,7 +572,7 @@ out:
 	pagefault_enable();
 }
 
-#endif 
+#endif /* CONFIG_PGTABLE_MAPPING */
 
 static int zs_cpu_notifier(struct notifier_block *nb, unsigned long action,
 				void *pcpu)
