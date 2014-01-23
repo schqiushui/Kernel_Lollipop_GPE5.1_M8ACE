@@ -541,6 +541,14 @@ static int msm_pm_collapse(unsigned long unused)
 	pr_debug("cpu:%d cores_in_pc:%d L2 flag: %d\n",
 			cpu, cpu_count, flag);
 
+	/*
+	 * The scm_handoff_lock will be release by the secure monitor.
+	 * It is used to serialize power-collapses from this point on,
+	 * so that both Linux and the secure context have a consistent
+	 * view regarding the number of running cpus (cpu_count).
+	 *
+	 * It must be acquired before releasing cpu_cnt_lock.
+	 */
 	if (need_scm_handoff_lock)
 		remote_spin_lock_rlock_id(&scm_handoff_lock,
 					  REMOTE_SPINLOCK_TID_START + cpu);
