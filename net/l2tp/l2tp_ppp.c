@@ -637,10 +637,10 @@ static int pppol2tp_connect(struct socket *sock, struct sockaddr *uservaddr,
 	session->ref = pppol2tp_session_sock_hold;
 	session->deref = pppol2tp_session_sock_put;
 
-	
-	dst = sk_dst_get(sk);
+	/* If PMTU discovery was enabled, use the MTU that was discovered */
+	dst = sk_dst_get(tunnel->sock);
 	if (dst != NULL) {
-		u32 pmtu = dst_mtu(__sk_dst_get(sk));
+		u32 pmtu = dst_mtu(__sk_dst_get(tunnel->sock));
 		if (pmtu != 0)
 			session->mtu = session->mru = pmtu -
 				PPPOL2TP_HEADER_OVERHEAD;
