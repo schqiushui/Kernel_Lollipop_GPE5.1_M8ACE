@@ -859,14 +859,13 @@ int usb_wwan_resume(struct usb_serial *serial)
 	dbg("%s entered", __func__);
 
 	spin_lock_irq(&intfdata->susp_lock);
-	intfdata->suspended = 0;
 	for (i = 0; i < serial->num_ports; i++) {
 		/* walk all ports */
 		port = serial->port[i];
 		portdata = usb_get_serial_port_data(port);
 
 		/* skip closed ports */
-		if (!portdata->opened)
+		if (!portdata || !portdata->opened)
 			continue;
 
 		if (port->interrupt_in_urb) {
@@ -903,6 +902,7 @@ int usb_wwan_resume(struct usb_serial *serial)
 			}
 		}
 	}
+	intfdata->suspended = 0;
 	spin_unlock_irq(&intfdata->susp_lock);
 
 	if (err_count)
