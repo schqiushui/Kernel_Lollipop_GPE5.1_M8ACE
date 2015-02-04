@@ -411,6 +411,7 @@ struct mmc_host {
 	unsigned int crc_count;
 	unsigned int expand_debounce;
 	enum dev_state dev_status;
+	bool			wakeup_on_idle;
 	unsigned long		private[0] ____cacheline_aligned;
 };
 

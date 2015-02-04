@@ -52,6 +52,8 @@ static int sd_queue_thread(void *d)
 	struct request_queue *q = mq->queue;
 
 	current->flags |= PF_MEMALLOC;
+	if (card->host->wakeup_on_idle)
+		set_wake_up_idle(true);
 
 	down(&mq->thread_sem);
 	do {
