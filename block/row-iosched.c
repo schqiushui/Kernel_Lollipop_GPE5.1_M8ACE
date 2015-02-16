@@ -49,17 +49,19 @@ struct row_queue_params {
 };
 
 static const struct row_queue_params row_queues_def[] = {
-	{true, 10, true, 0},	
-	{false, 1, false, 0},	
-	{true, 100, true, 0},	
-	{false, 1, false, 3 * HZ},	
-	{false, 1, false, 3 * HZ},	
-	{false, 1, false, 0},	
-	{false, 1, false, 3 * HZ}	
+/* idling_enabled, quantum, is_urgent */
+	{true, 100, true},	/* ROWQ_PRIO_HIGH_READ */
+	{false, 5, false},	/* ROWQ_PRIO_HIGH_SWRITE */
+	{true, 75, true},	/* ROWQ_PRIO_REG_READ */
+	{false, 4, false},	/* ROWQ_PRIO_REG_SWRITE */
+	{false, 4, false},	/* ROWQ_PRIO_REG_WRITE */
+	{false, 3, false},	/* ROWQ_PRIO_LOW_READ */
+	{false, 2, false}	/* ROWQ_PRIO_LOW_SWRITE */
 };
 
-#define ROW_IDLE_TIME_MSEC 5
-#define ROW_READ_FREQ_MSEC 5
+/* Default values for idling on read queues (in msec) */
+#define ROW_IDLE_TIME_MSEC 10
+#define ROW_READ_FREQ_MSEC 25
 
 struct rowq_idling_data {
 	ktime_t			last_insert_time;
@@ -255,6 +257,10 @@ static void row_add_request(struct request_queue *q,
 	struct row_queue *rqueue = RQ_ROWQ(rq);
 	s64 diff_ms;
 	bool queue_was_empty = list_empty(&rqueue->fifo);
+	unsigned long bv_page_flags = 0;
+
+	if (rq->bio && rq->bio->bi_io_vec && rq->bio->bi_io_vec->bv_page)
+		bv_page_flags = rq->bio->bi_io_vec->bv_page->flags;
 
 	list_add_tail(&rq->queuelist, &rqueue->fifo);
 	rd->nr_reqs[rq_data_dir(rq)]++;
@@ -287,7 +293,9 @@ static void row_add_request(struct request_queue *q,
 			rqueue->idle_data.begin_idling = false;
 			return;
 		}
-		if (diff_ms < rd->rd_idle_data.freq_ms) {
+
+		if ((bv_page_flags & (1L << PG_readahead)) ||
+		    (diff_ms < rd->rd_idle_data.freq_ms)) {
 			rqueue->idle_data.begin_idling = true;
 			row_log_rowq(rd, rqueue->prio, "Enable idling");
 		} else {
