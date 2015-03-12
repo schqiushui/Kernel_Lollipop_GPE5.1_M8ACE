@@ -283,13 +283,14 @@ static struct page *get_next_page(struct page *page)
 	if (is_last_page(page))
 		next = NULL;
 	else if (is_first_page(page))
-		next = (struct page *)page_private(page);
+		next = (struct page *)page->private;
 	else
 		next = list_entry(page->lru.next, struct page, lru);
 
 	return next;
 }
 
+/* Encode <page, obj_idx> as a single handle value */
 static void *obj_location_to_handle(struct page *page, unsigned long obj_idx)
 {
 	unsigned long handle;
@@ -300,16 +301,17 @@ static void *obj_location_to_handle(struct page *page, unsigned long obj_idx)
 	}
 
 	handle = page_to_pfn(page) << OBJ_INDEX_BITS;
-	handle |= ((obj_idx + 1) & OBJ_INDEX_MASK);
+	handle |= (obj_idx & OBJ_INDEX_MASK);
 
 	return (void *)handle;
 }
 
+/* Decode <page, obj_idx> pair from the given object handle */
 static void obj_handle_to_location(unsigned long handle, struct page **page,
 				unsigned long *obj_idx)
 {
 	*page = pfn_to_page(handle >> OBJ_INDEX_BITS);
-	*obj_idx = (handle & OBJ_INDEX_MASK) - 1;
+	*obj_idx = handle & OBJ_INDEX_MASK;
 }
 
 static unsigned long obj_idx_to_offset(struct page *page,
@@ -413,7 +415,7 @@ static struct page *alloc_zspage(struct size_class *class, gfp_t flags)
 			first_page->inuse = 0;
 		}
 		if (i == 1)
-			set_page_private(first_page, (unsigned long)page);
+			first_page->private = (unsigned long)page;
 		if (i >= 1)
 			page->first_page = first_page;
 		if (i >= 2)
