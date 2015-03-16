@@ -315,3 +315,8 @@ config SUSPEND_ONLY_ALLOW_WFI
 	bool "Only allow wfi when entering suspend"
 	def_bool y
 	depends on SUSPEND
+
+config PM_SYNC_BEFORE_SUSPEND
+	bool "Sync file systems before suspend"
+	depends on PM
+	default y
