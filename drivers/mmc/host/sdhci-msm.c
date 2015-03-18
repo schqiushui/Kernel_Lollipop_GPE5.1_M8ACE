@@ -1599,8 +1599,7 @@ struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev,
 	if (of_property_read_u32(np, "htc,expand-debounce", &pdata->expand_debounce))
 		pdata->expand_debounce = 0;
 
-	if (of_property_read_bool(np, "qcom,wakeup-on-idle"))
-		msm_host->mmc->wakeup_on_idle = true;
+	msm_host->mmc->wakeup_on_idle = true;
 
 	return pdata;
 out:
