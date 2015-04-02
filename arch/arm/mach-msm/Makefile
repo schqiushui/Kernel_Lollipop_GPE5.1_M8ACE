@@ -478,5 +478,6 @@ obj-$(CONFIG_PERFMAP) += perfmap.o
 obj-$(CONFIG_HTC_RPM_CMD) += rpm_htc_cmd.o
 obj-$(CONFIG_HTC_MONITOR) += htc_monitor.o
 obj-$(CONFIG_MSM_LIMITER) += msm_limiter.o
+obj-$(CONFIG_MSM_HOTPLUG) += msm_hotplug.o
 
 obj-$(CONFIG_HAS_MACH_MEMUTILS) += memutils/
