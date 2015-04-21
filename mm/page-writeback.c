@@ -401,7 +401,11 @@ static unsigned long bdi_position_ratio(struct backing_dev_info *bdi,
 	if (unlikely(bdi_thresh > thresh))
 		bdi_thresh = thresh;
 	bdi_thresh = max(bdi_thresh, (limit - dirty) / 8);
-	x = div_u64((u64)bdi_thresh << 16, thresh + 1);
+	/*
+	 * scale global setpoint to bdi's:
+	 *	bdi_setpoint = setpoint * bdi_thresh / thresh
+	 */
+	x = div_u64((u64)bdi_thresh << 16, thresh | 1);
 	bdi_setpoint = setpoint * (u64)x >> 16;
 	span = (thresh - bdi_thresh + 8 * write_bw) * (u64)x >> 16;
 	x_intercept = bdi_setpoint + span;
