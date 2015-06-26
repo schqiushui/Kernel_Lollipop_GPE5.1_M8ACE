@@ -1,7 +1,7 @@
 #!/bin/bash          
 
 #Setup proper path to rid missing gcc warning
-PATH=$PATH:~/gcc/arm-cortex_a15-linux-gnueabihf-linaro_4.9/bin
+PATH=$PATH:~/gcc/arm-eabi-4.9-cortex-a15/bin
 
 #Keep thangs sqeaky
 echo
@@ -17,4 +17,4 @@ make ARCH=arm schkernel_mec_defconfig
 echo
 echo
 echo " Set to arm at 375, for about 20 to 40 minutes "
-make ARCH=arm CROSS_COMPILE=~/gcc/arm-cortex_a15-linux-gnueabihf-linaro_4.9/bin/arm-cortex_a15-linux-gnueabihf- -j4
+make ARCH=arm CROSS_COMPILE=~/gcc/arm-eabi-4.9-cortex-a15/bin/arm-eabi- -j4

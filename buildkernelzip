@@ -14,7 +14,7 @@ toolchainDir="~/gcc/arm-cortex_a15-linux-gnueabihf-linaro_4.9" #( Example /home/
 exportDir="/home/schqiushui/Android/kernel_image/m8ace_out/stock" #( Example /home/user/Desktop )
 #Change default to what ever you like
 
-kernel1name="SchKernel-Lollipop-m8ace-2.0"
+kernel1name="SchKernel-Lollipop-GPE5.1-m8ace-3.0"
 kernel2name="SchKernel-ElementalX-m8ace-1.08"
 kernel3name="Default-3"
 #Do not edit
