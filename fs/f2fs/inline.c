@@ -13,7 +13,7 @@
 
 #include "f2fs.h"
 
-bool f2fs_may_inline(struct inode *inode)
+bool f2fs_may_inline_data(struct inode *inode)
 {
 	if (!test_opt(F2FS_I_SB(inode), INLINE_DATA))
 		return false;
@@ -25,6 +25,17 @@ bool f2fs_may_inline(struct inode *inode)
 		return false;
 
 	if (i_size_read(inode) > MAX_INLINE_DATA)
+		return false;
+
+	return true;
+}
+
+bool f2fs_may_inline_dentry(struct inode *inode)
+{
+	if (!test_opt(F2FS_I_SB(inode), INLINE_DENTRY))
+		return false;
+
+	if (!S_ISDIR(inode->i_mode))
 		return false;
 
 	return true;
@@ -95,8 +106,10 @@ int f2fs_convert_inline_page(struct dnode_of_data *dn, struct page *page)
 {
 	void *src_addr, *dst_addr;
 	struct f2fs_io_info fio = {
+		.sbi = F2FS_I_SB(dn->inode),
 		.type = DATA,
 		.rw = WRITE_SYNC | REQ_PRIO,
+		.page = page,
 	};
 	int dirty, err;
 
@@ -130,7 +143,7 @@ no_update:
 	/* write data page to try to make data consistent */
 	set_page_writeback(page);
 	fio.blk_addr = dn->data_blkaddr;
-	write_data_page(page, dn, &fio);
+	write_data_page(dn, &fio);
 	set_data_blkaddr(dn);
 	f2fs_update_extent_cache(dn);
 	f2fs_wait_on_page_writeback(page, DATA);
@@ -267,8 +280,7 @@ process_inline:
 }
 
 struct f2fs_dir_entry *find_in_inline_dir(struct inode *dir,
-				struct qstr *name, struct page **res_page,
-				unsigned int flags)
+				struct qstr *name, struct page **res_page)
 {
 	struct f2fs_sb_info *sbi = F2FS_SB(dir->i_sb);
 	struct f2fs_inline_dentry *inline_dentry;
@@ -283,7 +295,7 @@ struct f2fs_dir_entry *find_in_inline_dir(struct inode *dir,
 	inline_dentry = inline_data_addr(ipage);
 
 	make_dentry_ptr(&d, (void *)inline_dentry, 2);
-	de = find_target_dentry(name, NULL, &d, flags);
+	de = find_target_dentry(name, NULL, &d);
 
 	unlock_page(ipage);
 	if (de)
