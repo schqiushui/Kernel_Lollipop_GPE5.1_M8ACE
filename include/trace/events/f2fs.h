@@ -78,7 +78,6 @@
 		{ CP_UMOUNT,	"Umount" },				\
 		{ CP_FASTBOOT,	"Fastboot" },				\
 		{ CP_SYNC,	"Sync" },				\
-		{ CP_RECOVERY,	"Recovery" },				\
 		{ CP_DISCARD,	"Discard" })
 
 struct victim_sel_policy;

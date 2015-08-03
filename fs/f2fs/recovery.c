@@ -92,7 +92,7 @@ static int recover_dentry(struct inode *inode, struct page *ipage)
 		goto out_err;
 	}
 retry:
-	de = f2fs_find_entry(dir, &name, &page);
+	de = f2fs_find_entry(dir, &name, &page, 0);
 	if (de && inode->i_ino == le32_to_cpu(de->ino))
 		goto out_unmap_put;
 
@@ -564,7 +564,7 @@ out:
 		mutex_unlock(&sbi->cp_mutex);
 	} else if (need_writecp) {
 		struct cp_control cpc = {
-			.reason = CP_RECOVERY,
+			.reason = CP_SYNC,
 		};
 		mutex_unlock(&sbi->cp_mutex);
 		write_checkpoint(sbi, &cpc);
