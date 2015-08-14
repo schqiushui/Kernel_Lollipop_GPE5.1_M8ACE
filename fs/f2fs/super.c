@@ -428,28 +428,8 @@ static int f2fs_drop_inode(struct inode *inode)
 	 *    - f2fs_gc -> iput -> evict
 	 *       - inode_wait_for_writeback(inode)
 	 */
-	if (!inode_unhashed(inode) && inode->i_state & I_SYNC) {
-		if (!inode->i_nlink && !is_bad_inode(inode)) {
-			spin_unlock(&inode->i_lock);
-
-			/* some remained atomic pages should discarded */
-			if (f2fs_is_atomic_file(inode))
-				commit_inmem_pages(inode, true);
-
-			i_size_write(inode, 0);
-
-			if (F2FS_HAS_BLOCKS(inode))
-				f2fs_truncate(inode);
-
-
-#ifdef CONFIG_F2FS_FS_ENCRYPTION
-			if (F2FS_I(inode)->i_crypt_info)
-				f2fs_free_encryption_info(inode);
-#endif
-			spin_lock(&inode->i_lock);
-		}
+	if (!inode_unhashed(inode) && inode->i_state & I_SYNC)
 		return 0;
-	}
 	return generic_drop_inode(inode);
 }
 
@@ -540,7 +520,7 @@ int f2fs_sync_fs(struct super_block *sb, int sync)
 	} else {
 		f2fs_balance_fs(sbi);
 	}
-	f2fs_trace_ios(NULL, 1);
+	f2fs_trace_ios(NULL, NULL, 1);
 
 	return 0;
 }
@@ -678,22 +658,6 @@ static const struct file_operations f2fs_seq_segment_info_fops = {
 	.release = single_release,
 };
 
-static void default_options(struct f2fs_sb_info *sbi)
-{
-	/* init some FS parameters */
-	sbi->active_logs = NR_CURSEG_TYPE;
-
-	set_opt(sbi, BG_GC);
-	set_opt(sbi, INLINE_DATA);
-
-#ifdef CONFIG_F2FS_FS_XATTR
-	set_opt(sbi, XATTR_USER);
-#endif
-#ifdef CONFIG_F2FS_FS_POSIX_ACL
-	set_opt(sbi, POSIX_ACL);
-#endif
-}
-
 static int f2fs_remount(struct super_block *sb, int *flags, char *data)
 {
 	struct f2fs_sb_info *sbi = F2FS_SB(sb);
@@ -712,7 +676,7 @@ static int f2fs_remount(struct super_block *sb, int *flags, char *data)
 	active_logs = sbi->active_logs;
 
 	sbi->mount_opt.opt = 0;
-	default_options(sbi);
+	sbi->active_logs = NR_CURSEG_TYPE;
 
 	/* parse mount options */
 	err = parse_options(sb, data);
@@ -965,36 +929,29 @@ static void init_sb_info(struct f2fs_sb_info *sbi)
  */
 static int read_raw_super_block(struct super_block *sb,
 			struct f2fs_super_block **raw_super,
-			struct buffer_head **raw_super_buf,
-			int *recovery)
+			struct buffer_head **raw_super_buf)
 {
 	int block = 0;
-	struct buffer_head *buffer;
-	struct f2fs_super_block *super;
-	int err = 0;
 
 retry:
-	buffer = sb_bread(sb, block);
-	if (!buffer) {
-		*recovery = 1;
+	*raw_super_buf = sb_bread(sb, block);
+	if (!*raw_super_buf) {
 		f2fs_msg(sb, KERN_ERR, "Unable to read %dth superblock",
 				block + 1);
 		if (block == 0) {
 			block++;
 			goto retry;
 		} else {
-			err = -EIO;
-			goto out;
+			return -EIO;
 		}
 	}
 
-	super = (struct f2fs_super_block *)
-		((char *)(buffer)->b_data + F2FS_SUPER_OFFSET);
+	*raw_super = (struct f2fs_super_block *)
+		((char *)(*raw_super_buf)->b_data + F2FS_SUPER_OFFSET);
 
 	/* sanity checking of raw super */
-	if (sanity_check_raw_super(sb, super)) {
-		brelse(buffer);
-		*recovery = 1;
+	if (sanity_check_raw_super(sb, *raw_super)) {
+		brelse(*raw_super_buf);
 		f2fs_msg(sb, KERN_ERR,
 			"Can't find valid F2FS filesystem in %dth superblock",
 								block + 1);
@@ -1002,74 +959,25 @@ retry:
 			block++;
 			goto retry;
 		} else {
-			err = -EINVAL;
-			goto out;
+			return -EINVAL;
 		}
 	}
 
-	if (!*raw_super) {
-		*raw_super_buf = buffer;
-		*raw_super = super;
-	} else {
-		/* already have a valid superblock */
-		brelse(buffer);
-	}
-
-	/* check the validity of the second superblock */
-	if (block == 0) {
-		block++;
-		goto retry;
-	}
-
-out:
-	/* No valid superblock */
-	if (!*raw_super)
-		return err;
-
 	return 0;
-}
-
-int f2fs_commit_super(struct f2fs_sb_info *sbi)
-{
-	struct buffer_head *sbh = sbi->raw_super_buf;
-	sector_t block = sbh->b_blocknr;
-	int err;
-
-	/* write back-up superblock first */
-	sbh->b_blocknr = block ? 0 : 1;
-	mark_buffer_dirty(sbh);
-	err = sync_dirty_buffer(sbh);
-
-	sbh->b_blocknr = block;
-	if (err)
-		goto out;
-
-	/* write current valid superblock */
-	mark_buffer_dirty(sbh);
-	err = sync_dirty_buffer(sbh);
-out:
-	clear_buffer_write_io_error(sbh);
-	set_buffer_uptodate(sbh);
-	return err;
 }
 
 static int f2fs_fill_super(struct super_block *sb, void *data, int silent)
 {
 	struct f2fs_sb_info *sbi;
-	struct f2fs_super_block *raw_super;
+	struct f2fs_super_block *raw_super = NULL;
 	struct buffer_head *raw_super_buf;
 	struct inode *root;
-	long err;
+	long err = -EINVAL;
 	bool retry = true, need_fsck = false;
 	char *options = NULL;
-	int recovery, i;
+	int i;
 
 try_onemore:
-	err = -EINVAL;
-	raw_super = NULL;
-	raw_super_buf = NULL;
-	recovery = 0;
-
 	/* allocate memory for f2fs-specific super block info */
 	sbi = kzalloc(sizeof(struct f2fs_sb_info), GFP_KERNEL);
 	if (!sbi)
@@ -1081,12 +989,23 @@ try_onemore:
 		goto free_sbi;
 	}
 
-	err = read_raw_super_block(sb, &raw_super, &raw_super_buf, &recovery);
+	err = read_raw_super_block(sb, &raw_super, &raw_super_buf);
 	if (err)
 		goto free_sbi;
 
 	sb->s_fs_info = sbi;
-	default_options(sbi);
+	/* init some FS parameters */
+	sbi->active_logs = NR_CURSEG_TYPE;
+
+	set_opt(sbi, BG_GC);
+	set_opt(sbi, INLINE_DATA);
+
+#ifdef CONFIG_F2FS_FS_XATTR
+	set_opt(sbi, XATTR_USER);
+#endif
+#ifdef CONFIG_F2FS_FS_POSIX_ACL
+	set_opt(sbi, POSIX_ACL);
+#endif
 	/* parse mount options */
 	options = kstrdup((const char *)data, GFP_KERNEL);
 	if (data && !options) {
@@ -1116,7 +1035,6 @@ try_onemore:
 	sbi->raw_super = raw_super;
 	sbi->raw_super_buf = raw_super_buf;
 	mutex_init(&sbi->gc_mutex);
-	mutex_init(&sbi->writepages);
 	mutex_init(&sbi->cp_mutex);
 	init_rwsem(&sbi->node_write);
 	clear_sbi_flag(sbi, SBI_POR_DOING);
@@ -1231,12 +1149,10 @@ try_onemore:
 
 	if (test_opt(sbi, DISCARD)) {
 		struct request_queue *q = bdev_get_queue(sb->s_bdev);
-		if (!blk_queue_discard(q)) {
+		if (!blk_queue_discard(q))
 			f2fs_msg(sb, KERN_WARNING,
 					"mounting with \"discard\" option, but "
 					"the device does not support discard");
-			clear_opt(sbi, DISCARD);
-		}
 	}
 
 	sbi->s_kobj.kset = f2fs_kset;
@@ -1281,13 +1197,6 @@ try_onemore:
 			goto free_kobj;
 	}
 	kfree(options);
-
-	/* recover broken superblock */
-	if (recovery && !f2fs_readonly(sb) && !bdev_read_only(sb->s_bdev)) {
-		f2fs_msg(sb, KERN_INFO, "Recover invalid superblock");
-		f2fs_commit_super(sbi);
-	}
-
 	return 0;
 
 free_kobj:
@@ -1321,7 +1230,7 @@ free_sbi:
 
 	/* give only one another chance */
 	if (retry) {
-		retry = false;
+		retry = 0;
 		shrink_dcache_sb(sb);
 		goto try_onemore;
 	}
