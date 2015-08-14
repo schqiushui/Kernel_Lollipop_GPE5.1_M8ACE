@@ -93,14 +93,6 @@ In the following, <supply> can be vdd (flash core voltage) or vdd-io (I/O voltag
 	- qcom,wakeup-on-idle: if configured, the mmcqd thread will call
 	  set_wake_up_idle(), thereby voting for it to be called on idle CPUs.
 
-	- Refer to "Documentation/devicetree/bindings/pinctrl/pinctrl-bindings.txt"
-	  for following optional properties:
-		- pinctrl-names
-		- pinctrl-0, pinctrl-1,.. pinctrl-n
-
-	- qcom,wakeup-on-idle: if configured, the mmcqd thread will call
-	  set_wake_up_idle(), thereby voting for it to be called on idle CPUs.
-
 Example:
 
 	aliases {
