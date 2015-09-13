@@ -90,4 +90,9 @@ GTAGS
 *~
 *.list
 dt.img
+buildkernel
+buildkernelzip
+f2fsbuildkernelzip
+m8buildkernelzip
+m8f2fs-buildkernelzip
 \#*#
