@@ -37,6 +37,7 @@
 #define DEFAULT_CPUFREQ_UNPLUG_LIMIT 1800000
 #define DEFAULT_MIN_TIME_CPU_ONLINE 1
 #define DEFAULT_TIMER 1
+#define DEFAULT_MIN_CORES_ONLINE 2
 
 #define MIN_CPU_UP_US (200 * USEC_PER_MSEC)
 #define NUM_POSSIBLE_CPUS num_possible_cpus()
@@ -94,6 +95,11 @@ struct hotplug_tunables {
 	 * per second it runs
 	 */
 	unsigned int timer;
+
+	/**
+	 * the minimum cores which should be online.
+	 */
+	unsigned int min_cores_online;
 } tunables;
 
 static struct workqueue_struct *wq;
@@ -103,7 +109,7 @@ static inline void cpus_online_work(void)
 {
 	unsigned int cpu;
 
-	for (cpu = 2; cpu < 4; cpu++) {
+	for (cpu = 1; cpu < 4; cpu++) {
 		if (cpu_is_offline(cpu))
 			cpu_up(cpu);
 	}
@@ -115,7 +121,7 @@ static inline void cpus_offline_work(void)
 {
 	unsigned int cpu;
 
-	for (cpu = 3; cpu > 1; cpu--) {
+	for (cpu = 3; cpu > t->min_cores_online - 1; cpu--) {
 		if (cpu_online(cpu))
 			cpu_down(cpu);
 	}
@@ -135,7 +141,7 @@ static inline bool cpus_cpufreq_work(void)
 			return false;
 	}
 
-	for (cpu = 2; cpu < 4; cpu++)
+	for (cpu = t->min_cores_online; cpu < 4; cpu++)
 		current_freq += cpufreq_quick_get(cpu);
 
 	current_freq >>= 1;
@@ -231,7 +237,7 @@ static void __ref decide_hotplug_func(struct work_struct *work)
 			online_cpus == NUM_POSSIBLE_CPUS))
 		goto reschedule;
 
-	for (cpu = 0; cpu < 2; cpu++)
+	for (cpu = 0; cpu < t->min_cores_online; cpu++)
 		cur_load += cpufreq_quick_get_util(cpu);
 
 	cur_load >>= 1;
@@ -240,13 +246,13 @@ static void __ref decide_hotplug_func(struct work_struct *work)
 		if (stats.counter < t->max_load_counter)
 			++stats.counter;
 
-		if (online_cpus <= 2)
+		if (online_cpus <= t->min_cores_online)
 			cpu_revive(cur_load);
 	} else {
 		if (stats.counter)
 			--stats.counter;
 
-		if (online_cpus > 2)
+		if (online_cpus > t->min_cores_online)
 			cpu_smash(cur_load);
 	}
 
@@ -437,6 +443,30 @@ static ssize_t timer_store(struct device *dev, struct device_attribute *attr,
 	return size;
 }
 
+static ssize_t min_cores_online_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct hotplug_tunables *t = &tunables;
+
+	return snprintf(buf, PAGE_SIZE, "%u\n", t->min_cores_online);
+}
+
+static ssize_t min_cores_online_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct hotplug_tunables *t = &tunables;
+	int ret;
+	unsigned long new_val;
+
+	ret = kstrtoul(buf, 0, &new_val);
+	if (ret < 0)
+		return ret;
+
+	t->min_cores_online = new_val > 4 ? 4 : new_val < 1 ? 1 : new_val;
+
+	return size;
+}
+
 static DEVICE_ATTR(enabled, 0664, make_hotplug_enabled_show,
 		make_hotplug_enabled_store);
 static DEVICE_ATTR(load_threshold, 0664, load_threshold_show,
@@ -450,6 +480,8 @@ static DEVICE_ATTR(cpufreq_unplug_limit, 0664, cpufreq_unplug_limit_show,
 static DEVICE_ATTR(min_time_cpu_online, 0664, min_time_cpu_online_show,
 		min_time_cpu_online_store);
 static DEVICE_ATTR(timer, 0664, timer_show, timer_store);
+static DEVICE_ATTR(min_cores_online, 0664, min_cores_online_show,
+		min_cores_online_store);
 
 static struct attribute *mako_hotplug_control_attributes[] = {
 	&dev_attr_enabled.attr,
@@ -459,6 +491,7 @@ static struct attribute *mako_hotplug_control_attributes[] = {
 	&dev_attr_cpufreq_unplug_limit.attr,
 	&dev_attr_min_time_cpu_online.attr,
 	&dev_attr_timer.attr,
+	&dev_attr_min_cores_online.attr,
 	NULL
 };
 
@@ -496,6 +529,7 @@ static int mako_hotplug_probe(struct platform_device *pdev)
 	t->cpufreq_unplug_limit = DEFAULT_CPUFREQ_UNPLUG_LIMIT;
 	t->min_time_cpu_online = DEFAULT_MIN_TIME_CPU_ONLINE;
 	t->timer = DEFAULT_TIMER;
+	t->min_cores_online = DEFAULT_MIN_CORES_ONLINE;
 
 	ret = misc_register(&mako_hotplug_control_device);
 	if (ret) {
