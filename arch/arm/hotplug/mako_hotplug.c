@@ -28,6 +28,10 @@
 #include <linux/input.h>
 #include <linux/jiffies.h>
 
+#ifdef CONFIG_POWERSUSPEND
+#include <linux/powersuspend.h>
+#endif
+
 #define MAKO_HOTPLUG "mako_hotplug"
 
 #define DEFAULT_HOTPLUG_ENABLED 0
@@ -270,6 +274,32 @@ reschedule:
 	 */
 	queue_delayed_work(wq, &decide_hotplug, HZ * 2);
 }
+
+#ifdef CONFIG_POWERSUSPEND
+static void __mako_hotplug_suspend(struct power_suspend *handler)
+{
+	queue_work(wq, &suspend);
+}
+
+static void __mako_hotplug_resume(struct power_suspend *handler)
+{
+	if (!stats.booted) {
+		/*
+		 * let's start messing with the cores only after
+		 * the device has booted up
+		 */
+		queue_delayed_work(wq, &decide_hotplug, 0);
+		stats.booted = true;
+	}
+	else
+		queue_work(wq, &resume);
+}
+
+static struct power_suspend mako_hotplug_power_suspend_driver = {
+	.suspend = __mako_hotplug_suspend,
+	.resume = __mako_hotplug_resume,
+};
+#endif
 
 /*
  * Sysfs get/set entries start
@@ -543,6 +573,10 @@ static int mako_hotplug_probe(struct platform_device *pdev)
 		ret = -EINVAL;
 		goto err;
 	}
+
+#ifdef CONFIG_POWERSUSPEND
+	register_power_suspend(&mako_hotplug_power_suspend_driver);
+#endif
 
 	INIT_DELAYED_WORK(&decide_hotplug, decide_hotplug_func);
 
