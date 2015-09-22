@@ -28,6 +28,10 @@
 #include <linux/input.h>
 #include <linux/jiffies.h>
 
+#ifdef CONFIG_POWERSUSPEND
+#include <linux/powersuspend.h>
+#endif
+
 #define MAKO_HOTPLUG "mako_hotplug"
 
 #define DEFAULT_HOTPLUG_ENABLED 0
@@ -46,9 +50,11 @@
 struct cpu_stats {
 	unsigned int counter;
 	u64 timestamp;
+	bool booted;
 } stats = {
 	.counter = 0,
 	.timestamp = 0,
+	.booted = false,
 };
 
 struct hotplug_tunables {
@@ -104,6 +110,7 @@ struct hotplug_tunables {
 
 static struct workqueue_struct *wq;
 static struct delayed_work decide_hotplug;
+static struct work_struct suspend, resume;
 
 static inline void cpus_online_work(void)
 {
@@ -119,6 +126,7 @@ static inline void cpus_online_work(void)
 
 static inline void cpus_offline_work(void)
 {
+	struct hotplug_tunables *t = &tunables;
 	unsigned int cpu;
 
 	for (cpu = 3; cpu > t->min_cores_online - 1; cpu--) {
@@ -262,6 +270,46 @@ reschedule:
 		msecs_to_jiffies(t->timer * HZ));
 
 }
+
+static void mako_hotplug_suspend(struct work_struct *work)
+{
+	cpus_offline_work();
+
+	pr_info("%s: suspend\n", MAKO_HOTPLUG);
+}
+
+static void __ref mako_hotplug_resume(struct work_struct *work)
+{
+	cpus_online_work();
+
+	pr_info("%s: resume\n", MAKO_HOTPLUG);
+}
+
+#ifdef CONFIG_POWERSUSPEND
+static void __mako_hotplug_suspend(struct power_suspend *handler)
+{
+	queue_work(wq, &suspend);
+}
+
+static void __mako_hotplug_resume(struct power_suspend *handler)
+{
+	if (!stats.booted) {
+		/*
+		 * let's start messing with the cores only after
+		 * the device has booted up
+		 */
+		queue_delayed_work(wq, &decide_hotplug, 0);
+		stats.booted = true;
+	}
+	else
+		queue_work(wq, &resume);
+}
+
+static struct power_suspend mako_hotplug_power_suspend_driver = {
+	.suspend = __mako_hotplug_suspend,
+	.resume = __mako_hotplug_resume,
+};
+#endif
 
 /*
  * Sysfs get/set entries start
@@ -500,7 +548,7 @@ static struct miscdevice mako_hotplug_control_device = {
  * Sysfs get/set entries end
  */
 
-static int mako_hotplug_probe(struct platform_device *pdev)
+static int __devinit mako_hotplug_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	struct hotplug_tunables *t = &tunables;
@@ -534,6 +582,12 @@ static int mako_hotplug_probe(struct platform_device *pdev)
 		goto err;
 	}
 
+#ifdef CONFIG_POWERSUSPEND
+	register_power_suspend(&mako_hotplug_power_suspend_driver);
+#endif
+
+	INIT_WORK(&resume, mako_hotplug_resume);
+	INIT_WORK(&suspend, mako_hotplug_suspend);
 	INIT_DELAYED_WORK(&decide_hotplug, decide_hotplug_func);
 
 	queue_delayed_work_on(0, wq, &decide_hotplug, HZ * 30);
