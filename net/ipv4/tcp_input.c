@@ -3723,7 +3723,6 @@ static int tcp_ack(struct sock *sk, const struct sk_buff *skb, int flag)
 	int prior_packets = 0;
 	int prior_sacked = 0;
 	int pkts_acked = 0;
-	int newly_acked_sacked = 0;
 	int frto_cwnd = 0;
 
     if ((!sk) || IS_ERR(sk))
