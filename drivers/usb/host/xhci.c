@@ -953,15 +953,6 @@ int xhci_resume(struct xhci_hcd *xhci, bool hibernated)
 		usb_hcd_resume_root_hub(xhci->shared_hcd);
 	}
 
-	/*
-	 * If system is subject to the Quirk, Compliance Mode Timer needs to
-	 * be re-initialized Always after a system resume. Ports are subject
-	 * to suffer the Compliance Mode issue again. It doesn't matter if
-	 * ports have entered previously to U0 before system's suspension.
-	 */
-	if (xhci->quirks & XHCI_COMP_MODE_QUIRK)
-		compliance_mode_recovery_timer_init(xhci);
-
 	/* Re-enable port polling. */
 	xhci_dbg(xhci, "%s: starting port polling.\n", __func__);
 	set_bit(HCD_FLAG_POLL_RH, &hcd->flags);
