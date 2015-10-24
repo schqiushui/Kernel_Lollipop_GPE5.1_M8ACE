@@ -32,6 +32,12 @@ extern int get_partition_num_by_name(char *name);
 static int offset=628;
 static int first_read=1;
 mm_segment_t oldfs;
+/**
+MTK  LK  MISC_ENABLE_LOG_OFFSET :: 148084  = 147456 + 628
+QCT  LK  MISC_ENABLE_LOG_OFFSET ::   2676  =  2048  + 628
+QCT  HB  MISC_ENABLE_LOG_OFFSET ::    628  =     0  + 628
+
+**/
 
 #if 0
 #define SECMSG(s...) pr_info("[SECURITY] "s)
@@ -101,7 +107,7 @@ int htc_debug_read(char *page, char **start, off_t off, int count, int *eof, voi
             nread = kernel_read(filp, filp->f_pos, RfMisc, FLAG_LEN+2);
 
             memset(htc_debug_flag,0,FLAG_LEN+1);
-            memcpy(htc_debug_flag,RfMisc+2,FLAG_LEN);
+            memcpy(htc_debug_flag,RfMisc+2,FLAG_LEN);//RfMisc will have two bytes prefix "0x"
 
             SECMSG("%s: RfMisc        :%s (%zd)\n", __func__,RfMisc, nread);
             SECMSG("%s: htc_debug_flag:%s \n", __func__, htc_debug_flag);
@@ -138,7 +144,7 @@ int htc_debug_write(struct file *file, const char *buffer, unsigned long count, 
         return -EFAULT;
 
     memset(htc_debug_flag,0,FLAG_LEN+1);
-    memcpy(htc_debug_flag,buf+2,FLAG_LEN);
+    memcpy(htc_debug_flag,buf+2,FLAG_LEN);//buf will have two bytes prefix "0x"
 
     SECMSG("Receive :%s\n",buf);
     SECMSG("Flag    :%s\n",htc_debug_flag);
@@ -160,7 +166,7 @@ int htc_debug_write(struct file *file, const char *buffer, unsigned long count, 
 
     SECMSG("%s: offset :%d\n", __func__, offset);
     filp->f_pos = offset;
-    nread = kernel_write(filp, buf, FLAG_LEN+2, filp->f_pos);
+    nread = kernel_write(filp, buf, FLAG_LEN+2, filp->f_pos);//Need to write two bytes prefix "0x" to misc
     SECMSG("%s:wrire: %s (%zd)\n", __func__, buf, nread);
 
     if (filp)

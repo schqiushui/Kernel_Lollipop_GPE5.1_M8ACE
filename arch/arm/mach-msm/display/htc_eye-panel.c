@@ -9,12 +9,18 @@
 #include <mach/debug_display.h>
 #include "../../../../drivers/video/msm/mdss/mdss_dsi.h"
 
-struct dsi_power_data {
-	uint32_t sysrev;         
-	struct regulator *vddio; 
-	struct regulator *vdda;  
+#ifdef CONFIG_HTC_PNPMGR
+extern void set_screen_status(bool onoff);
+#endif
 
-	struct regulator *vlcmio; 
+/* HTC: dsi_power_data overwrite the role of dsi_drv_cm_data
+   in mdss_dsi_ctrl_pdata structure */
+struct dsi_power_data {
+	uint32_t sysrev;         /* system revision info */
+	struct regulator *vddio; /* 1.8v */
+	struct regulator *vdda;  /* 1.2v */
+
+	struct regulator *vlcmio; /* 1.8v */
 	int lcmio;
 	int lcmp5v;
 	int lcmn5v;
@@ -88,7 +94,7 @@ static int tps_65132_add_i2c(struct i2c_client *client)
 	struct i2c_adapter *adapter = client->adapter;
 	int idx;
 
-	
+	/* "Hotplug" the MHL transmitter device onto the 2nd I2C bus  for BB-xM or 4th for pandaboard*/
 	i2c_bus_adapter = adapter;
 	if (i2c_bus_adapter == NULL) {
 		PR_DISP_ERR("%s() failed to get i2c adapter\n", __func__);
@@ -241,7 +247,9 @@ static int htc_eye_regulator_init(struct platform_device *pdev)
 
 static int htc_eye_regulator_deinit(struct platform_device *pdev)
 {
-	
+	/* devm_regulator() will automatically free regulators
+	   while dev detach. */
+	/* nothing */
 	return 0;
 }
 
@@ -324,7 +332,7 @@ static int htc_eye_panel_power_on(struct mdss_panel_data *pdata, int enable)
 
 	if (enable) {
 		if (gpio_is_valid(pwrdata->lcmio)) {
-			
+			/* EVM */
 			gpio_set_value(pwrdata->lcmio, 1);
 		} else {
 			ret = regulator_enable(pwrdata->vlcmio);
@@ -417,11 +425,14 @@ static int htc_eye_panel_power_on(struct mdss_panel_data *pdata, int enable)
 				return ret;
 			}
 		}
-		
+		/* Delay 20ms to avoid panel issue when fast power on\off */
 		usleep_range(20000,20500);
 	}
 	PR_DISP_INFO("%s: en=%d done\n", __func__, enable);
 
+#ifdef CONFIG_HTC_PNPMGR
+	set_screen_status(enable);
+#endif
 	return 0;
 }
 

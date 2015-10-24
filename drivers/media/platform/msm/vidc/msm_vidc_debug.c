@@ -247,14 +247,14 @@ static ssize_t inst_info_read(struct file *file, char __user *buf,
 {
 	struct msm_vidc_inst *inst = file->private_data;
 
-	
+	/* HTC_START: Dump video instance buffer information */
 	struct buffer_info *temp = NULL;
 	struct buffer_info *dummy = NULL;
 	struct list_head *list = NULL;
 	struct internal_buf *internal_buf = NULL;
 	struct list_head *ptr, *next;
 	struct ion_handle *ion_handle = NULL;
-	
+	/* HTC_END */
 
 	int i, j;
 	if (!inst) {
@@ -309,7 +309,7 @@ static ssize_t inst_info_read(struct file *file, char __user *buf,
 	write_str(&dbg_buf, "FTB Count: %d\n", inst->count.ftb);
 	write_str(&dbg_buf, "FBD Count: %d\n", inst->count.fbd);
 
-	
+	/* HTC_START: Dump video instance buffer information */
 	list = &inst->internalbufs;
 	mutex_lock(&inst->lock);
 	write_str(&dbg_buf, "-----------Buffer Information-----------\n");
@@ -339,7 +339,7 @@ static ssize_t inst_info_read(struct file *file, char __user *buf,
 		}
 	}
 	mutex_unlock(&inst->lock);
-	
+	/* HTC_END */
 	publish_unreleased_reference(inst);
 
 	return simple_read_from_buffer(buf, count, ppos,

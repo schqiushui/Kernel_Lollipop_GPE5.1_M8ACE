@@ -86,7 +86,7 @@ bool	input_dev_rcp   = 1;
 bool	input_dev_ucp   = 1;
 int	gpio_index      = -1;
 bool	push_pull_8240  = 0;
-static bool reset_on_exit = 1;  
+static bool reset_on_exit = 1;  /*request to reset hw before unloading driver*/
 uint8_t mhlDriverDone 	= 0;
 bool 	ap_hdcp_success = false;
 EXPORT_SYMBOL(ap_hdcp_success);
@@ -376,16 +376,27 @@ void htc_charging_enable(int dcap)
 		uint8_t param = 0, plim = 0;
 		struct mhl_dev_context *dev_context = i2c_get_clientdata(device_addresses[0].client);
 		param = dcap & MHL_DEV_CATEGORY_POW_BIT;
+		/*
+		   plim inidicate the minimum VBUS power which the device
+		   is desgined to deliver to the Source.
+		   [0,0] = 500mA; [0,1] = 1A
+		 */
 		plim = dcap & MHL_DEV_CATEGORY_PLIM;
 
 		if (param) {
+			/*
+			 * Since downstream device is supplying VBUS power we turn
+			 * off our VBUS power here.  If the platform application
+			 * can control VBUS power it should turn off it's VBUS
+			 * power now.
+			 */
 			mhl_tx_vbus_control(VBUS_OFF);
 			if (plim) {
-				
+				/* plim [0,1] = 1A */
 				PR_DISP_INFO("[MHL] 1000mA charger!!\n");
 				dev_context->statMHL = CONNECT_TYPE_MHL_AC;
 			} else {
-				
+				/* plim [0,0] = 500mA */
 				PR_DISP_INFO("[MHL] 500mA charger!!\n");
 				dev_context->statMHL = CONNECT_TYPE_USB;
 			}
@@ -396,7 +407,7 @@ void htc_charging_enable(int dcap)
 			queue_work(dev_context->wq, &dev_context->mhl_notifier_work);
 		}
 
-		
+		/* Inform interested Apps of the MHL power change */
 		mhl_event_notify(dev_context, MHL_TX_EVENT_POW_BIT_CHG, param, NULL);
 	} else
 		MHL_TX_DBG_ERR(NULL, "NOT Valid dev_cap, No POW_BIT");
@@ -406,7 +417,7 @@ void mhl_tx_vbus_control(enum vbus_power_state power_state)
 {
 #if 1
 	struct device *dev;
-	static struct regulator *reg_boost_5v = NULL;
+	static struct regulator *reg_boost_5v = NULL;/* HDMI_5V */
 	struct device_node *of_node = NULL;
 	static int prev_on = 0;
 	int rc;
@@ -486,6 +497,10 @@ int si_8240_device_dbg_i2c_reg_xfer(void *dev_context, u8 page, u8 offset,
 
 #if defined(DEBUG)
 
+/*
+ * Return a pointer to the file name part of the
+ * passed path spec string.
+ */
 char *find_file_name(const char *path_spec)
 {
 	char *pc;
@@ -515,6 +530,10 @@ void print_formatted_debug_msg(int level,
 	int			len;
 	va_list		ap;
 
+	/*
+	 * Allow informational level debug messages to be turned off
+	 * by a switch on the starter kit board
+	 */
 	if (level > debug_level){
 			return;
 	}
@@ -522,6 +541,10 @@ void print_formatted_debug_msg(int level,
 	if (fmt == NULL)
 		return;
 
+	/*
+	 * Only want to print the file name where the debug print
+	 * statement originated, not the path to it.
+	 */
 	if (file_spec != NULL)
 		file_spec = find_file_name(file_spec);
 
@@ -588,8 +611,8 @@ void dump_i2c_transfer(void *context, u8 page, u8 offset,
 	char	*buf;
 
 	if (count > 1) {
-		buf_size += count * 3; 				
-		buf_size += ((count / 16) + 1) * 8;	
+		buf_size += count * 3; 				/* 3 characters per byte displayed */
+		buf_size += ((count / 16) + 1) * 8;	/* plus per display row overhead */
 	}
 
 	buf = kmalloc(buf_size, GFP_KERNEL);
@@ -623,7 +646,7 @@ void dump_i2c_transfer(void *context, u8 page, u8 offset,
 
 	kfree(buf);
 }
-#endif 
+#endif /* #if defined(DEBUG) */
 
 struct mhl_drv_info drv_info = {
 	.drv_context_size = sizeof(struct drv_hw_context),
@@ -632,6 +655,11 @@ struct mhl_drv_info drv_info = {
 	.mhl_device_dbg_i2c_reg_xfer = si_8240_device_dbg_i2c_reg_xfer,
 };
 
+/*
+ * since we've agreed that the interrupt pin will never move
+ *  we've special cased it for performance reasons.
+ * This is why there is no set_pin() index for it.
+ */
 int is_interrupt_asserted(void)
 {
 	return (gpio_get_value(drv_info.intr_pin) ? 0 : 1);
@@ -715,6 +743,10 @@ hpd_control_mode platform_get_hpd_control_mode(void)
 	return (push_pull_8240 ?  HPD_CTRL_PUSH_PULL : HPD_CTRL_OPEN_DRAIN);
 }
 
+/*
+* This function is called by USB driver, cable detection feature.
+* To ensure the MHL chip would go into D3 mode after cable detection.
+*/
 void si_d2_to_d3(void)
 {
 	struct mhl_dev_context *dev_context;
@@ -739,7 +771,7 @@ void si_wakeup_mhl(void)
 		hw_context = (struct drv_hw_context *)&dev_context->drv_context;
 		drv_info.mhl_device_initialize(hw_context, true);
 
-		
+		/*Below is workaround for Chip with no interrupts, implemented by Max */
 		dev_context->fake_cable_out = true;
 		queue_delayed_work(dev_context->wq, &dev_context->irq_timeout_work,
 				MHL_ISR_TIMEOUT);
@@ -759,7 +791,7 @@ static void update_mhl_status(bool isMHL, enum usb_connect_type statMHL)
 	dev_context->statMHL = statMHL;
 
 	queue_work(dev_context->wq, &dev_context->mhl_notifier_work);
-	drv_info.hdmi_mhl_ops->send_cable_notification(drv_info.hdmi_pdev, 0);
+	drv_info.hdmi_mhl_ops->send_cable_notification(drv_info.hdmi_pdev, 0);/*send remove uevent*/
 }
 
 static void irq_timeout_handler(struct work_struct *w)
@@ -787,7 +819,7 @@ static int si_8240_8558_add_i2c(struct i2c_client *client)
 	struct i2c_adapter *adapter = client->adapter;
 	int idx;
 
-	
+	/* "Hotplug" the MHL transmitter device onto the 2nd I2C bus  for BB-xM or 4th for pandaboard*/
 	i2c_bus_adapter = adapter;
 	if (i2c_bus_adapter == NULL) {
 		PR_DISP_ERR("%s() failed to get i2c adapter\n", __func__);
@@ -827,7 +859,7 @@ static int mhl_get_power_dt_data(struct device *dev)
 		return rc;
 	}
 
-	
+	/* avcc_12 & cvcc_12 must be derived from the same power source */
 	drv_info.avcc_12_vreg = devm_regulator_get(dev, "avcc_12");
 	if (IS_ERR(drv_info.avcc_12_vreg)) {
 		PR_DISP_ERR("%s: could not get avcc_12 reg, rc=%ld\n",
@@ -843,7 +875,7 @@ static int mhl_get_power_dt_data(struct device *dev)
 	}
 
 	drv_info.iovcc_18_vreg = devm_regulator_get(dev, "iovcc_18");
-	
+	/* Sometimes iovcc_18 may use system io power */
 	if (IS_ERR(drv_info.iovcc_18_vreg)) {
 		PR_DISP_WARN("%s: could not get iovcc_18, rc=%ld\n",
 			__func__, PTR_ERR(drv_info.iovcc_18_vreg));
@@ -910,16 +942,16 @@ static int mhl_get_gpio_dt_data(struct device *dev)
 		pr_info("[MHL]rst_gpio[%d]=%d,PwrOn Pull_High", drv_info.reset_pin,
 				gpio_get_value_cansleep(drv_info.reset_pin));
 
-		
+		/* HW suggest we enable the reset pin twice for safe sequence. */
 		usleep(1000);
 		gpio_set_value_cansleep(drv_info.reset_pin, 1);
 		usleep(1000);
 		gpio_set_value_cansleep(drv_info.reset_pin, 0);
-		
+		/* Time to Reset MHL transmitter Chip */
 		usleep(1000);
 		gpio_set_value_cansleep(drv_info.reset_pin, 1);
 
-		msleep(100);	
+		msleep(100);	/*Timg to Access I2C*/
 		platform_signals[TX_HW_RESET].gpio_number = drv_info.reset_pin;
 	}
 
@@ -1018,7 +1050,7 @@ static int mhl_get_dt_data(struct device *dev)
 		return -EINVAL;
 	}
 
-	
+	/* parse phandle for hdmi tx */
 	hdmi_tx_node = of_parse_phandle(of_node, "qcom,hdmi-tx-map", 0);
 	if (!hdmi_tx_node) {
 		pr_err("%s: can't find hdmi phandle\n", __func__);
@@ -1034,7 +1066,7 @@ static int mhl_get_dt_data(struct device *dev)
 	       __func__, (unsigned int)drv_info.hdmi_pdev);
 
 	return 0;
-} 
+} /* mhl_tx_get_dt_data */
 
 void enable_hdmi(int enable)
 {
@@ -1110,10 +1142,10 @@ static int __devinit si_8240_8558_mhl_tx_i2c_probe(struct i2c_client *client,
 	dev_context->wq = create_workqueue("mhl_sii8240_8558_wq");
 	INIT_WORK(&dev_context->mhl_notifier_work, send_mhl_connect_notify);
 
-	
+	/**fake remove start**/
 	dev_context->fake_cable_out = false;
 	INIT_DELAYED_WORK(&dev_context->irq_timeout_work, irq_timeout_handler);
-	
+	/**fake remove end**/
 	mhl_get_swing_value(&client->dev);
 	mhlDriverDone = 1;
 	printk("[MHL]---%s successful---\n", __func__);
@@ -1216,7 +1248,7 @@ static void __exit si_8240_8558_exit(void)
 	}
 }
 
-#ifdef DDC_BYPASS_API 
+#ifdef DDC_BYPASS_API //(
 int si_8240_8558_ddc_bypass_control(int bypass)
 {
 	int status;
@@ -1243,7 +1275,7 @@ int si_8240_8558_ddc_bypass_control(int bypass)
 	return status;
 }
 EXPORT_SYMBOL(si_8240_8558_ddc_bypass_control);
-#endif 
+#endif //)
 
 module_init(si_8240_8558_init);
 module_exit(si_8240_8558_exit);

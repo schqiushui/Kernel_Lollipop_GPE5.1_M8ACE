@@ -156,6 +156,11 @@ static unsigned int process_info(struct page_info *info,
 		sg_dma_address(sg_sync) = page_to_phys(page);
 	}
 	sg_set_page(sg, page, (1 << info->order) * PAGE_SIZE, 0);
+	/*
+	 * This is not correct - sg_dma_address needs a dma_addr_t
+	 * that is valid for the the targeted device, but this works
+	 * on the currently targeted hardware.
+	 */
 	sg_dma_address(sg) = page_to_phys(page);
 	if (data) {
 		for (j = 0; j < (1 << info->order); ++j)
@@ -243,6 +248,12 @@ static int ion_system_heap_allocate(struct ion_heap *heap,
 	sg = table->sgl;
 	sg_sync = table_sync.sgl;
 
+	/*
+	 * We now have two separate lists. One list contains pages from the
+	 * pool and the other pages from buddy. We want to merge these
+	 * together while preserving the ordering of the pages (higher order
+	 * first).
+	 */
 	do {
 		if (!list_empty(&pages))
 			info = list_first_entry(&pages, struct page_info, list);
@@ -290,7 +301,7 @@ static int ion_system_heap_allocate(struct ion_heap *heap,
 	ion_heap_free_pages_mem(&data);
 	return 0;
 err_free_sg2:
-	
+	/* We failed to zero buffers. Bypass pool */
 	buffer->flags |= ION_FLAG_FREED_FROM_SHRINKER;
 
 	for_each_sg(table->sgl, sg, table->nents, i)
@@ -376,6 +387,9 @@ static int ion_system_heap_shrink(struct shrinker *shrinker,
 	if (sc->nr_to_scan == 0)
 		goto end;
 
+	/* shrink the free list first, no point in zeroing the memory if
+	   we're just going to reclaim it. Also, skip any possible
+	   page pooling */
 	nr_freed += ion_heap_freelist_drain_from_shrinker(
 		heap, sc->nr_to_scan * PAGE_SIZE) / PAGE_SIZE;
 
@@ -395,6 +409,8 @@ static int ion_system_heap_shrink(struct shrinker *shrinker,
 	}
 
 end:
+	/* total number of items is whatever the page pools are holding
+	   plus whatever's in the freelist */
 	for (i = 0; i < num_orders; i++) {
 		nr_total += ion_page_pool_shrink(
 			sys_heap->uncached_pools[i], sc->gfp_mask, 0);
@@ -458,6 +474,13 @@ static void ion_system_heap_destroy_pools(struct ion_page_pool **pools)
 			ion_page_pool_destroy(pools[i]);
 }
 
+/**
+ * ion_system_heap_create_pools - Creates pools for all orders
+ *
+ * If this fails you don't need to destroy any pools. It's all or
+ * nothing. If it succeeds you'll eventually need to use
+ * ion_system_heap_destroy_pools to destroy the pools.
+ */
 static int ion_system_heap_create_pools(struct ion_page_pool **pools)
 {
 	int i;

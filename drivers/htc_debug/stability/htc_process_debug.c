@@ -35,8 +35,8 @@ void send_signal_debug_dump(int sig, struct task_struct *t)
 {
 
 	struct task_comm *tc;
-#if 0 
-	
+#if 0 /* to reduce the log message, for performance concern */
+	// dump infomation for unkillable processes when receiving sigkill
 	if(sig == SIGKILL){
 		if((t->state & TASK_UNINTERRUPTIBLE) || (t->exit_state & EXIT_ZOMBIE)){
 			printk(KERN_WARNING "%s: %s(%d) send SIGKILL to %s(%d), but %s might not dead right now due to its %s state.\n",
@@ -47,7 +47,7 @@ void send_signal_debug_dump(int sig, struct task_struct *t)
 			if(t->exit_state & EXIT_ZOMBIE)
 				printk(KERN_WARNING "Please check its parent:%s(%d) or thread group.\n",
 					t->real_parent->comm, t->real_parent->pid);
-			
+			// give it 1 second to die, then dump stack
 			schedule_delayed_work(&show_block_state_struct, 1 * HZ);
 		}
 	}
@@ -56,7 +56,7 @@ void send_signal_debug_dump(int sig, struct task_struct *t)
 		read_lock(&task_comm_lock);
 		list_for_each_entry(tc, &task_comm_list, list) {
 			if (sig != SIGCHLD && tc->comm && (!strncmp(t->comm, tc->comm, TASK_COMM_LEN)) ) {
-				
+				/* byapssing NON zygote main process name */
 				if ((!strncmp(t->comm, "main", 4)) && t->parent->pid != 1 ) {
 					break;
 				}
@@ -85,7 +85,7 @@ void do_group_exit_debug_dump(int exit_code)
 		read_lock(&task_comm_lock);
 		list_for_each_entry(tc, &task_comm_list, list) {
 			if (tc->comm && (!strncmp(t->comm, tc->comm, TASK_COMM_LEN)) ) {
-				
+				/* byapssing NON zygote main process name */
 				if ((!strncmp(t->comm, "main", 4)) && t->parent->pid != 1 ) {
 					break;
 				}

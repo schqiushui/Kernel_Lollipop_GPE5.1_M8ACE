@@ -3152,6 +3152,24 @@ config HTC_PANEL_PWR_REG
         bool "Register DSI Panel Power"
 		default y if ARCH_MSM8226
 
+config MACH_BAGOSS
+        depends on ARCH_MSM8974
+        bool "MSM8974 BAGOSS"
+        help
+          Support for HTC MSM8974 BAGOSS
+
+config MACH_GLU_U
+        depends on ARCH_MSM8974
+        bool "MSM8974 GLU_U"
+        help
+          Support for HTC MSM8974 GLU_U
+
+config MACH_GLU_WLJ
+        depends on ARCH_MSM8974
+        bool "MSM8974 GLU_WLJ"
+        help
+          Support for HTC MSM8974 GLU_WLJ
+
 config MACH_M8
         depends on ARCH_MSM8974
         bool "MSM8974 M8"
@@ -3163,6 +3181,169 @@ config PROJECT_NAME
         default ""
         help
           Support for Project Name
+
+config MACH_M8_DUG
+        depends on ARCH_MSM8974
+        bool "MSM8974 M8_DUG"
+        help
+          Support for HTC MSM8974 M8_DUG
+
+config MACH_M8_TL
+        depends on ARCH_MSM8974
+        bool "MSM8974 M8_TL"
+        help
+          Support for HTC MSM8974 M8_TL
+
+config MACH_M8_WHL
+        depends on ARCH_MSM8974
+        bool "MSM8974 M8_WHL"
+        help
+          Support for HTC MSM8974 M8_WHL
+
+config MACH_M8_WL
+        depends on ARCH_MSM8974
+        bool "MSM8974 M8_WL"
+        help
+          Support for HTC MSM8974 M8_WL
+
+config MACH_J1
+        depends on ARCH_MSM8226
+        bool "MSM8226 J1"
+        help
+          Support for HTC MSM8226 J1
+
+config MACH_A3_UL
+        depends on ARCH_MSM8226
+        bool "MSM8226 A3_UL"
+        help
+          Support for HTC MSM8226 A3_UL
+
+config MACH_A3_CL
+        depends on ARCH_MSM8226
+        bool "MSM8226 A3_CL"
+        help
+          Support for HTC MSM8226 A3_CL
+
+config MACH_A3_TL
+        depends on ARCH_MSM8226
+        bool "MSM8226 A3_TL"
+        help
+          Support for HTC MSM8226 A3_TL
+
+config MACH_MEM_UL
+        depends on ARCH_MSM8226
+        bool "MSM8226 MEM_UL"
+        help
+          Support for HTC MSM8226 MEM_UL
+
+config MACH_MEM_WL
+        depends on ARCH_MSM8226
+        bool "MSM8226 MEM_WL"
+        help
+          Support for HTC MSM8226 MEM_WL
+
+config MACH_A5_DWG
+        depends on ARCH_MSM8226
+        bool "MSM8226 A5_DWG"
+        help
+          Support for HTC MSM8226 A5_DWG
+
+config MACH_A5_UL
+        depends on ARCH_MSM8226
+        bool "MSM8226 A5_UL"
+        help
+          Support for HTC MSM8226 A5_UL
+
+config MACH_A5_TL
+        depends on ARCH_MSM8226
+        bool "MSM8226 A5_TL"
+        help
+          Support for HTC MSM8226 A5_TL
+
+config MACH_A5_DWGL
+        depends on ARCH_MSM8226
+        bool "MSM8226 A5_DWGL"
+        help
+          Support for HTC MSM8226 A5_DWGL
+
+config MACH_A5_DUGL
+        depends on ARCH_MSM8226
+        bool "MSM8226 A5_DUGL"
+        help
+          Support for HTC MSM8226 A5_DUGL
+
+config MACH_A11_UL
+        depends on ARCH_MSM8226
+        bool "MSM8226 A11_UL"
+        help
+          Support for HTC MSM8226 A11_UL
+
+config MACH_MEC_UL
+        depends on ARCH_MSM8974
+        bool "MSM8974 MEC_UL"
+        help
+          Support for HTC MSM8974 MEC_UL
+
+config MACH_MEC_DUG
+        depends on ARCH_MSM8974
+        bool "MSM8974 MEC_DUG"
+        help
+          Support for HTC MSM8974 MEC_DUG
+
+config MACH_MEC_DWG
+        depends on ARCH_MSM8974
+        bool "MSM8974 MEC_DWG"
+        help
+          Support for HTC MSM8974 MEC_DWG
+
+config MACH_MEC_TL
+        depends on ARCH_MSM8974
+        bool "MSM8974 MEC_TL"
+        help
+          Support for HTC MSM8974 MEC_TL
+
+config MACH_MEC_WHL
+        depends on ARCH_MSM8974
+        bool "MSM8974 MEC_WHL"
+        help
+          Support for HTC MSM8974 MEC_WHL
+
+config MACH_B2_WLJ
+        depends on ARCH_MSM8974
+        bool "MSM8974 B2_WLJ"
+        help
+          Support for HTC MSM8974 B2_WLJ
+
+config MACH_B2_UL
+        depends on ARCH_MSM8974
+        bool "MSM8974 B2_UL"
+        help
+          Support for HTC MSM8974 B2_UL
+
+
+config MACH_EYE_UL
+        depends on ARCH_MSM8974
+        bool "MSM8974 EYE_UL"
+        help
+          Support for HTC MSM8974 EYE_UL
+
+config MACH_EYE_WL
+        depends on ARCH_MSM8974
+        bool "MSM8974 EYE_WL"
+        help
+          Support for HTC MSM8974 EYE_WL
+
+config MACH_EYE_WHL
+        depends on ARCH_MSM8974
+        bool "MSM8974 EYE_WHL"
+        help
+          Support for HTC MSM8974 EYE_WHL
+
+config MACH_MELS_TUHL
+        depends on ARCH_MSM8974
+        bool "MSM8974 MELS_TUHL"
+        help
+          Support for HTC MSM8974 MELS_TUHL
 
 endif
 

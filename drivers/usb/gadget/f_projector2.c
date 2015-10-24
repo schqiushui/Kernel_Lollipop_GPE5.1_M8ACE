@@ -55,9 +55,11 @@ unsigned short *test_frame;
 
 static int touch_init_p2 = 0;
 
+/*16KB*/
 #define TXN_MAX 16384
 #define RXN_MAX 4096
 
+/* number of rx requests to allocate */
 #define PROJ_RX_REQ_MAX 4
 
 #define DEFAULT_PROJ2_WIDTH			480
@@ -101,6 +103,7 @@ struct hsml_header07 {
 	u8 context_info[492];
 } __attribute__ ((__packed__));
 
+/*++ 2014/07/08, USB Team, PCN10001 ++*/
 #if HSML_VERSION_12
 struct hsml_header12 {
 	u8 signature[8];
@@ -114,6 +117,7 @@ struct hsml_header12 {
 	u8 aucReserved[486];
 } __attribute__ ((__packed__));
 #endif
+/*-- 2014/07/08, USB Team, PCN10001 --*/
 
 static struct switch_dev ml_switch = {
 	.name = "mirror_link",
@@ -165,14 +169,16 @@ struct projector2_dev {
 	struct work_struct send_fb_work;
 	int start_send_fb;
 
-	
+	/* HSML Protocol Info */
 	struct hsml_protocol *hsml_proto;
 
 	u8 is_htcmode;
 	struct hsml_header07 header;
+/*++ 2014/07/08, USB Team, PCN10001 ++*/
 #if HSML_VERSION_12
 	struct hsml_header12 header12;
 #endif
+/*-- 2014/07/08, USB Team, PCN10001 --*/
 	u8 notify_authenticator;
 };
 
@@ -230,13 +236,14 @@ static struct usb_descriptor_header *hs_projector2_descs[] = {
 	NULL,
 };
 
+/* string descriptors: */
 static struct usb_string projector2_string_defs[] = {
 	[0].s = "HSML Server",
-	{  } 
+	{  } /* end of list */
 };
 
 static struct usb_gadget_strings projector2_string_table = {
-	.language =		0x0409,	
+	.language =		0x0409,	/* en-us */
 	.strings =		projector2_string_defs,
 };
 
@@ -258,7 +265,7 @@ static struct usb_request *projector2_request_new(struct usb_ep *ep, int buffer_
 	if (!req)
 		return NULL;
 
-	
+	/* now allocate buffers for the requests */
 	req->buf = kmalloc(buffer_size, GFP_KERNEL);
 	if (!req->buf) {
 		usb_ep_free_request(ep, req);
@@ -276,6 +283,7 @@ static void projector2_request_free(struct usb_request *req, struct usb_ep *ep)
 	}
 }
 
+/* add a request to the tail of a list */
 static void projector2_req_put(struct projector2_dev *dev, struct list_head *head,
 		struct usb_request *req)
 {
@@ -286,6 +294,7 @@ static void projector2_req_put(struct projector2_dev *dev, struct list_head *hea
 	spin_unlock_irqrestore(&dev->lock, flags);
 }
 
+/* remove a request from the head of a list */
 static struct usb_request *projector2_req_get(struct projector2_dev *dev, struct list_head *head)
 {
 	unsigned long flags;
@@ -308,7 +317,7 @@ static int send_hsml_header07(struct projector2_dev *dev)
 	int err;
 	static u32 seq;
 
-	
+	/* prevent seq overflow */
 	seq &= 0x0000ffff;
 	dev->header.seq = htons((u16)seq++);
 	dev->header.timestamp = htonl((u32)ktime_to_ms(ktime_get()));
@@ -342,6 +351,7 @@ static int send_hsml_header07(struct projector2_dev *dev)
 	return err;
 }
 
+/*++ 2014/07/08, USB Team, PCN10001 ++*/
 #if HSML_VERSION_12
 static int send_hsml_header12(struct projector2_dev *dev)
 {
@@ -381,13 +391,14 @@ static u32 seq;
 	return err;
 }
 #endif
+/*-- 2014/07/08, USB Team, PCN10001 --*/
 
 static void projector2_queue_out(struct projector2_dev *dev)
 {
 	int ret;
 	struct usb_request *req;
 
-	
+	/* if we have idle read requests, get them queued */
 	while ((req = projector2_req_get(dev, &dev->rx_idle))) {
 		req->length = RXN_MAX;
 		VDBG("%s: queue %p\n", __func__, req);
@@ -444,7 +455,7 @@ static void projector2_send_multitouch_event(struct projector2_dev *dev,
 	if (event->num_touch == 0)
 		content = NULL;
 	else {
-		
+		/* Move to point to touch data */
 		content = (struct touch_content *)(data + sizeof(struct touch_event));
 	}
 	touch2_event_func(dev, content, event->num_touch);
@@ -548,10 +559,12 @@ uint uXferCnt = 0;
 
 	if (dev->online
 	    && (
+/*++ 2014/07/08, USB Team, PCN10001 ++*/
 #if HSML_VERSION_12
 	        (prj2_dev->hsml_ver == cHSML_VER_12) ?
 	            send_hsml_header12(dev)	:
 #endif
+/*-- 2014/07/08, USB Team, PCN10001 --*/
 	            send_hsml_header07(dev)) < 0) {
 		printk(KERN_WARNING "%s: failed to send hsml header\n", __func__);
 		goto unlock;
@@ -687,7 +700,7 @@ static int projector2_create_bulk_endpoints(struct projector2_dev *dev,
 		return -ENODEV;
 	}
 	DBG("usb_ep_autoconfig for ep_in got %s\n", ep->name);
-	ep->driver_data = dev;		
+	ep->driver_data = dev;		/* claim the endpoint */
 	dev->ep_in = ep;
 
 #if HSML_VERSION_12
@@ -700,7 +713,7 @@ static int projector2_create_bulk_endpoints(struct projector2_dev *dev,
             return -ENODEV;
         }
         DBG("usb_ep_autoconfig for projector ep_out got %s\n", ep->name);
-        ep->driver_data = dev;		
+        ep->driver_data = dev;		/* claim the endpoint */
         dev->ep_out = ep;
     }
 #if HSML_VERSION_12
@@ -708,7 +721,7 @@ static int projector2_create_bulk_endpoints(struct projector2_dev *dev,
         dev->ep_out = NULL;
 #endif
 
-	
+	/* now allocate requests for our endpoints */
 #if HSML_VERSION_12
     if (out_desc)
 #endif
@@ -757,14 +770,14 @@ projector2_function_bind(struct usb_configuration *c, struct usb_function *f)
 	dev->cdev = cdev;
 	DBG("%s\n", __func__);
 
-	
+	/* allocate interface ID(s) */
 	id = usb_interface_id(c, f);
 	if (id < 0)
 		return id;
 
 	projector2_interface_desc.bInterfaceNumber = id;
 
-	
+	/* allocate endpoints */
 #if HSML_VERSION_12
     if (dev->hsml_ver != cHSML_VER_12)
 #endif
@@ -778,7 +791,7 @@ projector2_function_bind(struct usb_configuration *c, struct usb_function *f)
 	if (ret)
 		return ret;
 
-	
+	/* support high speed hardware */
 	if (gadget_is_dualspeed(c->cdev->gadget)) {
 		projector2_highspeed_in_desc.bEndpointAddress =
 			projector2_fullspeed_in_desc.bEndpointAddress;
@@ -822,7 +835,9 @@ static int projector2_function_set_alt(struct usb_function *f,
 	}
 
 #if HSML_VERSION_12
+/*++ 2014/07/08, USB Team, PCN10001 ++*/
     if (dev->ep_out)
+/*-- 2014/07/08, USB Team, PCN10001 --*/
 #endif
     {
         ret = config_ep_by_speed(cdev->gadget, f, dev->ep_out);
@@ -845,7 +860,9 @@ static int projector2_function_set_alt(struct usb_function *f,
 	dev->online = 1;
 
 #if HSML_VERSION_12
+/*++ 2014/07/08, USB Team, PCN10001 ++*/
     if (dev->ep_out)
+/*-- 2014/07/08, USB Team, PCN10001 --*/
 #endif
         projector2_queue_out(dev);
 
@@ -875,7 +892,7 @@ static int projector2_touch_init(struct projector2_dev *dev)
 	set_bit(EV_KEY,    tdev->evbit);
 	set_bit(EV_ABS,    tdev->evbit);
 
-	
+	/* Set input parameters boundary. */
 	input_set_abs_params(tdev, ABS_MT_POSITION_X, 0, x, 0, 0);
 	input_set_abs_params(tdev, ABS_MT_POSITION_Y, 0, y, 0, 0);
 	input_set_abs_params(tdev, ABS_MT_PRESSURE, 0, 1, 0, 0);
@@ -915,13 +932,16 @@ static void projector2_function_disable(struct usb_function *f)
 
 	DBG("%s\n", __func__);
 
+//	dev->start_send_fb = false;
 	dev->start_send_fb = cHSML_STREAM_OFF;
 	dev->online = 0;
 	dev->error = 1;
 	usb_ep_disable(dev->ep_in);
 
 #if HSML_VERSION_12
+/*++ 2014/07/08, USB Team, PCN10001 ++*/
     if (dev->ep_out)
+/*-- 2014/07/08, USB Team, PCN10001 --*/
 #endif
         usb_ep_disable(dev->ep_out);
 
@@ -953,7 +973,9 @@ projector2_function_unbind(struct usb_configuration *c, struct usb_function *f)
 		projector2_request_free(req, dev->ep_in);
 
 #if HSML_VERSION_12
+/*++ 2014/07/08, USB Team, PCN10001 ++*/
     if (dev->ep_out)
+/*-- 2014/07/08, USB Team, PCN10001 --*/
 #endif
     {
         while ((req = projector2_req_get(dev, &dev->rx_idle)))
@@ -1178,7 +1200,7 @@ u16	w_value = le16_to_cpu(ctrl->wValue);
                     if (!w_value)
                         projector2_enable_fb_work(prj2_dev, cHSML_STREAM_ON);
                     else
-                    
+                    //    projector2_send_fb(prj2_dev);
                         projector2_enable_fb_work(prj2_dev, cHSML_ON_DEMAND);
                     value = 0;
                     break;
@@ -1258,7 +1280,7 @@ u16	w_value = le16_to_cpu(ctrl->wValue);
                         maxSize = info->var.xres * info->var.yres;
                     }
 
-        
+        /* implement me later */
 
 			for (i = 0; i <= 26; i++) {
 				if ((display_setting[i][0] * display_setting[i][1]) <= maxSize)
@@ -1434,12 +1456,14 @@ u8 ucTmpUUID[] = {
 	dev->header.seq = 0;
 	dev->header.timestamp = 0;
 
+/*++ 2014/07/08, USB Team, PCN10001 ++*/
 #if HSML_VERSION_12
 	memcpy(&dev->header12.signature, sig, sizeof(dev->header12.signature));
 	dev->header12.seq = 0;
 	dev->header12.timestamp = 0;
 	memset(dev->header12.aucReserved, 0, sizeof(dev->header12.aucReserved));
 #endif
+/*-- 2014/07/08, USB Team, PCN10001 --*/
 
 	INIT_WORK(&dev->notifier_display_work, prj2_notify_display);
 	INIT_WORK(&dev->notifier_setting_work, prj2_notify_setting);

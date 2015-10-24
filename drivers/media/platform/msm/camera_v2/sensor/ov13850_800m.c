@@ -24,7 +24,7 @@ static struct msm_sensor_power_setting ov13850_800m_power_setting[] = {
 #ifdef CONFIG_REGULATOR_NCP6924
 	{
 		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_STANDBY,  
+		.seq_val = SENSOR_GPIO_STANDBY,  //used for NCP6924_CAM_EN
 		.config_val = GPIO_OUT_HIGH,
 		.delay = 1,
 	},
@@ -220,10 +220,11 @@ static void __exit ov13850_800m_exit_module(void)
 	return;
 }
 
+/*HTC_START*/
 int32_t ov13850_800m_read_otp_memory(uint8_t *otpPtr, struct msm_sensor_ctrl_t *s_ctrl)
 {
-	uint16_t addr_start = 0x7220; 
-	uint16_t addr_end = 0x72af;   
+	uint16_t addr_start = 0x7220; //0x7000 for full size;
+	uint16_t addr_end = 0x72af;   //0x73ff for full size;
 	uint16_t read_data = 0;
 	int32_t i;
 	int32_t rc = 0;
@@ -290,7 +291,7 @@ static void ov13850_800m_parse_otp_mem(struct msm_sensor_ctrl_t *s_ctrl)
 	int32_t i,j;
 	int32_t valid_layer=-1;
 
-	
+	// start from layer 2
 	for (j=2; j>=0; j--) {
 		offset = 0x220;
 		for (i=0; i<15; i++) {
@@ -371,7 +372,7 @@ static int ov13850_800m_read_fuseid(struct sensorb_cfg_data *cdata,
 	cdata->cfg.fuse.fuse_id_word3 = otp[7];
 	cdata->cfg.fuse.fuse_id_word4 = otp[13];
 
-	
+	//vcm
 	cdata->af_value.AF_INF_MSB = otp[9];
 	cdata->af_value.AF_INF_LSB = otp[10];
 	cdata->af_value.AF_MACRO_MSB = otp[11];
@@ -388,7 +389,7 @@ static int ov13850_800m_read_fuseid(struct sensorb_cfg_data *cdata,
 	cdata->af_value.MODULE_ID_AB = cdata->cfg.fuse.fuse_id_word2;
 	cdata->af_value.VCM_VENDOR_ID_VERSION = otp[4];
 
-	
+	//otp[3] == 0x11 for lc898212_act
 	strlcpy(cdata->af_value.ACT_NAME, "lc898212_act", sizeof("lc898212_act"));
 	if (otp[3] == 0x31)
 	    strlcpy(cdata->af_value.ACT_NAME, "ti201_act", sizeof("ti201_act"));
@@ -399,6 +400,7 @@ static int ov13850_800m_read_fuseid(struct sensorb_cfg_data *cdata,
 	return 0;
 }
 
+//HTC_START , move read OTP to sensor probe
 int32_t ov13850_800m_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0;
@@ -417,16 +419,18 @@ int32_t ov13850_800m_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 	}
 	return rc;
 }
+//HTC_END
 
 static struct msm_sensor_fn_t ov13850_800m_sensor_func_tbl = {
 	.sensor_config = msm_sensor_config,
 	.sensor_power_up = msm_sensor_power_up,
 	.sensor_power_down = msm_sensor_power_down,
-    
+    //HTC_START , move read OTP to sensor probe
 	.sensor_match_id = ov13850_800m_sensor_match_id,
-	
+	//HTC_END
 	.sensor_i2c_read_fuseid = ov13850_800m_read_fuseid,
 };
+/*HTC_END*/
 
 static struct msm_sensor_ctrl_t ov13850_800m_s_ctrl = {
 	.sensor_i2c_client = &ov13850_800m_sensor_i2c_client,

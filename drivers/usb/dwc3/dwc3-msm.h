@@ -35,7 +35,7 @@ struct dwc3_msm {
         struct regulator        *dwc3_gdsc;
         struct wake_lock        cable_detect_wlock;
 
-        
+        /* VBUS regulator if no OTG and running in host only mode */
         struct regulator        *vbus_otg;
         struct dwc3_ext_xceiv   ext_xceiv;
         bool                    resume_pending;

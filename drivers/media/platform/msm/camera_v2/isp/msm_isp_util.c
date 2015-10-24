@@ -387,6 +387,12 @@ long msm_isp_ioctl(struct v4l2_subdev *sd,
 	long rc = 0;
 	struct vfe_device *vfe_dev = v4l2_get_subdevdata(sd);
 
+	/* Use real time mutex for hard real-time ioctls such as
+	 * buffer operations and register updates.
+	 * Use core mutex for other ioctls that could take
+	 * longer time to complete such as start/stop ISP streams
+	 * which blocks until the hardware start/stop streaming
+	 */
 	ISP_DBG("%s cmd: %d\n", __func__, _IOC_TYPE(cmd));
 	switch (cmd) {
 	case VIDIOC_MSM_VFE_REG_CFG: {
@@ -712,7 +718,7 @@ int msm_isp_proc_cmd(struct vfe_device *vfe_dev, void *arg)
 		(void __user *)(proc_cmd->cfg_cmd),
 		sizeof(struct msm_vfe_reg_cfg_cmd) * proc_cmd->num_cfg)) {
 		rc = -EFAULT;
-		pr_err("%s: copy_from_user reg_cfg_cmd failed\n", __func__); 
+		pr_err("%s: copy_from_user reg_cfg_cmd failed\n", __func__); // HTC
 		goto copy_cmd_failed;
 	}
 
@@ -720,7 +726,7 @@ int msm_isp_proc_cmd(struct vfe_device *vfe_dev, void *arg)
 			(void __user *)(proc_cmd->cfg_data),
 			proc_cmd->cmd_len)) {
 		rc = -EFAULT;
-		pr_err("%s: copy_from_user cfg_data failed\n", __func__); 
+		pr_err("%s: copy_from_user cfg_data failed\n", __func__); // HTC
 		goto copy_cmd_failed;
 	}
 
@@ -731,7 +737,7 @@ int msm_isp_proc_cmd(struct vfe_device *vfe_dev, void *arg)
 	if (copy_to_user(proc_cmd->cfg_data,
 			cfg_data, proc_cmd->cmd_len)) {
 		rc = -EFAULT;
-		pr_err("%s: copy_to_user cfg_data failed\n", __func__); 
+		pr_err("%s: copy_to_user cfg_data failed\n", __func__); // HTC
 		goto copy_cmd_failed;
 	}
 
@@ -808,7 +814,7 @@ int msm_isp_cal_word_per_line(uint32_t output_format,
 	case V4L2_PIX_FMT_NV61:
 		val = CAL_WORD(pixel_per_line, 1, 8);
 		break;
-		
+		/*TD: Add more image format*/
 	default:
 		msm_isp_print_fourcc_error(__func__, output_format);
 		break;
@@ -918,7 +924,7 @@ int msm_isp_get_bit_per_pixel(uint32_t output_format)
 	case V4L2_PIX_FMT_NV61:
 	case V4L2_PIX_FMT_Y16:
 		return 16;
-		
+		/*TD: Add more image format*/
 	default:
 		msm_isp_print_fourcc_error(__func__, output_format);
 		return -EINVAL;
@@ -987,7 +993,7 @@ static inline void msm_isp_process_overflow_irq(
 {
 	uint32_t overflow_mask;
 	uint32_t halt_restart_mask0, halt_restart_mask1;
-	
+	/*Mask out all other irqs if recovery is started*/
 	if (atomic_read(&vfe_dev->error_info.overflow_state) !=
 		NO_OVERFLOW) {
 		vfe_dev->hw_info->vfe_ops.core_ops.
@@ -998,7 +1004,7 @@ static inline void msm_isp_process_overflow_irq(
 		return;
 	}
 
-	
+	/*Check if any overflow bit is set*/
 	vfe_dev->hw_info->vfe_ops.core_ops.
 		get_overflow_mask(&overflow_mask);
 	overflow_mask &= *irq_status1;
@@ -1008,16 +1014,16 @@ static inline void msm_isp_process_overflow_irq(
 		atomic_set(&vfe_dev->error_info.overflow_state,
 				OVERFLOW_DETECTED);
 		pr_warning("%s: Start bus overflow recovery\n", __func__);
-		
+		/*Store current IRQ mask*/
 		vfe_dev->hw_info->vfe_ops.core_ops.get_irq_mask(vfe_dev,
 			&vfe_dev->error_info.overflow_recover_irq_mask0,
 			&vfe_dev->error_info.overflow_recover_irq_mask1);
-		
+		/*Stop CAMIF Immediately*/
 		vfe_dev->hw_info->vfe_ops.core_ops.
 			update_camif_state(vfe_dev, DISABLE_CAMIF_IMMEDIATELY_VFE_RECOVER);
-		
+		/*Halt the hardware & Clear all other IRQ mask*/
 		vfe_dev->hw_info->vfe_ops.axi_ops.halt(vfe_dev, 0);
-		
+		/*Update overflow state*/
 		atomic_set(&vfe_dev->error_info.overflow_state, HALT_REQUESTED);
 		*irq_status0 = 0;
 		*irq_status1 = 0;
@@ -1064,15 +1070,23 @@ static inline void msm_isp_process_overflow_recovery(
 	switch (atomic_read(&vfe_dev->error_info.overflow_state)) {
 	case HALT_REQUESTED: {
 		pr_err("%s: Halt done, Restart Pending\n", __func__);
-		
+		/*Reset the hardware*/
 		vfe_dev->hw_info->vfe_ops.core_ops.reset_hw(vfe_dev, ISP_RST_SOFT, 0);
-		
+		/*Update overflow state*/
 		atomic_set(&vfe_dev->error_info.overflow_state,
 				RESTART_REQUESTED);
 	}
 		break;
 	case RESTART_REQUESTED: {
 		pr_err("%s: Restart done, Resuming\n", __func__);
+		/*Reset the burst stream frame drop pattern, in the
+		 *case where bus overflow happens during the burstshot,
+		 *the framedrop pattern might be updated after reg update
+		 *to skip all the frames after the burst shot. The burst shot
+		 *might not be completed due to the overflow, so the framedrop
+		 *pattern need to change back to the original settings in order
+		 *to recovr from overflow.
+		 */
 		msm_isp_reset_burst_count(vfe_dev);
 		vfe_dev->hw_info->vfe_ops.axi_ops.
 			reload_wm(vfe_dev, 0xFFFFFFFF);
@@ -1221,16 +1235,16 @@ int msm_isp_open_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 		return -EBUSY;
 	}
 
-	pr_info("%s: reset vfe\n", __func__); 
+	pr_info("%s: reset vfe\n", __func__); //HTC_sungfeng
     memset(&vfe_dev->error_info, 0, sizeof(vfe_dev->error_info));
     atomic_set(&vfe_dev->error_info.overflow_state, NO_OVERFLOW);
 
 	rc = vfe_dev->hw_info->vfe_ops.core_ops.reset_hw(vfe_dev, ISP_RST_HARD, 1);
 	if (rc <= 0) {
 		pr_err("%s: reset timeout\n", __func__);
-		
+		//HTC_START : Force VFE dump log for vfe reset timeout issue
 		msm_camera_io_dump_2(vfe_dev->vfe_base, 0x900);
-		
+		//HTC_END
 		vfe_dev->hw_info->vfe_ops.core_ops.release_hw(vfe_dev);
 		mutex_unlock(&vfe_dev->core_mutex);
 		mutex_unlock(&vfe_dev->realtime_mutex);
@@ -1248,7 +1262,7 @@ int msm_isp_open_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 		vfe_dev->soc_hw_version = msm_camera_io_r(vfe_dev->tcsr_base);
 		break;
 	default:
-		
+		/* SOC HARDWARE VERSION NOT SUPPORTED */
 		vfe_dev->soc_hw_version = 0x00;
 	}
 

@@ -19,10 +19,16 @@
 #include <linux/of_device.h>
 #include <linux/spmi.h>
 
+//#include <mach/qpnp.h>
 #include <linux/qpnp/vibrator.h>
 #include "../staging/android/timed_output.h"
 
 #include <linux/vibtrig.h>
+/* Vibrator driver to implement trigger: */
+/* 1. Setup "struct vib_trigger_enabler", especially name/default_trigger/enable/trigger_data. */
+/* 2. Register it by "vib_trigger_enabler_register()". */
+/* 3. Unregister when module unloaded, by "vib_trigger_enabler_unregister()". */
+/* 4. Release "struct vib_trigger_enabler" if necessary. */
 
 #define QPNP_VIB_VTG_CTL(base)		(base + 0x41)
 #define QPNP_VIB_EN_CTL(base)		(base + 0x46)
@@ -53,8 +59,10 @@ struct qpnp_vib {
 	int vtg_level;
 	int timeout;
 	spinlock_t lock;
+// added by zhiyuan_zhu@htc.com for vibrate weak
 	u8 enlarge_vib_on;
 	u8 enlarge_vib_diff_value;
+// added by zhiyuan_zhu@htc.com for vibrate weak
 };
 
 static struct qpnp_vib *vib_dev;
@@ -109,7 +117,7 @@ int qpnp_vibrator_config(struct qpnp_vib_config *vib_cfg)
 		return -EINVAL;
 	}
 
-	
+	/* Configure the VTG CTL regiser */
 	reg = vib_dev->reg_vtg_ctl;
 	reg &= ~QPNP_VIB_VTG_SET_MASK;
 	reg |= (level & QPNP_VIB_VTG_SET_MASK);
@@ -118,7 +126,7 @@ int qpnp_vibrator_config(struct qpnp_vib_config *vib_cfg)
 		return rc;
 	vib_dev->reg_vtg_ctl = reg;
 
-	
+	/* Configure the VIB ENABLE regiser */
 	reg = vib_dev->reg_en_ctl;
 	reg |= (!!vib_cfg->active_low) << QPNP_VIB_LOGIC_SHIFT;
 	if (vib_cfg->enable_mode == QPNP_VIB_MANUAL)
@@ -310,7 +318,7 @@ static int qpnp_vibrator_suspend(struct device *dev)
 
 	hrtimer_cancel(&vib->vib_timer);
 	cancel_work_sync(&vib->work);
-	
+	/* turn-off vibrator */
 	qpnp_vib_set(vib, 0);
 
 	return 0;
@@ -349,6 +357,7 @@ static int __devinit qpnp_vibrator_probe(struct spmi_device *spmi)
 
 	vib->vtg_level /= 100;
 
+// added by zhiyuan_zhu@htc.com for vibrate weak
 	temp_dt = of_get_property(spmi->dev.of_node,
 		"qcom,qpnp-vib-enlarge-enable", NULL);
 	if(temp_dt) {
@@ -363,8 +372,9 @@ static int __devinit qpnp_vibrator_probe(struct spmi_device *spmi)
 	} else {
 		vib->enlarge_vib_diff_value = 0;
 	}
-	
-	
+	//printk(KERN_INFO "[VIB] vib->enlarge-vib_on: %d\n", vib->enlarge_vib_on);
+	//printk(KERN_INFO "[VIB] vib->enlarge_vib_diff_value: %d\n", vib->enlarge_vib_diff_value);
+// added by zhiyuan_zhu@htc.com
 
 	vib_resource = spmi_get_resource(spmi, 0, IORESOURCE_MEM, 0);
 	if (!vib_resource) {
@@ -373,7 +383,7 @@ static int __devinit qpnp_vibrator_probe(struct spmi_device *spmi)
 	}
 	vib->base = vib_resource->start;
 
-	
+	/* save the control registers values */
 	rc = qpnp_vib_read_u8(vib, &val, QPNP_VIB_VTG_CTL(vib->base));
 	if (rc < 0)
 		return rc;

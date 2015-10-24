@@ -14,6 +14,10 @@ the GNU General Public License for more details at http://www.gnu.org/licenses/g
 
 */
 
+/*
+   @file si_8240_8558_drv.c
+*/
+//#include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/semaphore.h>
 #include <linux/cdev.h>
@@ -44,9 +48,11 @@ the GNU General Public License for more details at http://www.gnu.org/licenses/g
 #include "../mdss_hdmi_tx.h"
 #include "../mdss_hdmi_hdcp.h"
 
+/* external functions */
 extern bool ap_hdcp_success;
 extern struct hdmi_hdcp_ctrl *hdcp_ctrl_global;
 
+/* Local functions */
 static	int	int_4_isr(struct drv_hw_context *hw_context, uint8_t int_4_status);
 static	int	int_5_isr(struct drv_hw_context *hw_context, uint8_t int_5_status);
 static	int	int_8_isr(struct drv_hw_context *hw_context, uint8_t intr_8_status);
@@ -80,6 +86,7 @@ static	int	start_video(struct drv_hw_context *hw_context, void *edid_parser_cont
 void AppVbusControl(struct drv_hw_context *hw_context, uint8_t dev_cat);
 #endif
 
+/* Local data */
 #define	HDCP_RPTR_CTS_DELAY_MS	2875
 #define	HDCP_ERROR_THRESHOLD	5
 static	int	hdcp_bksv_err_count    = 0;
@@ -193,119 +200,120 @@ enum	{
 #define MCPC_FLAGS (flag_mcpc_button | flag_audio_poll | flag_audio)
 
 struct rid_entry tableOne[] = {
-     {flag_usb           ,BIT_ASW_MAN_CTRL_USB_D_ON,"T1 - SHORTED (USB)"                   }
-    ,{flag_audio_button  ,AUDIO_POPSUP_SWCFG       ,"T1 - 2K - Audio Send - End Button"    }
-    ,{flag_audio_button  ,AUDIO_POPSUP_SWCFG       ,"T1 - 2.604K - Audio Remote S1 Button" }
-    ,{flag_audio_button  ,AUDIO_POPSUP_SWCFG       ,"T1 - 3.208K - Audio Remote S2 Button" }
-    ,{flag_audio_button  ,AUDIO_POPSUP_SWCFG       ,"T1 - 4.014K - Audio Remote S3 Button" }
-    ,{flag_audio_button  ,AUDIO_POPSUP_SWCFG       ,"T1 - 4.82K - Audio Remote S4 Button"  }
-    ,{flag_audio_button  ,AUDIO_POPSUP_SWCFG       ,"T1 - 6.03K - Audio Remote S5 Button"  }
-    ,{flag_audio_button  ,AUDIO_POPSUP_SWCFG       ,"T1 - 8.03K - Audio Remote S6 Button"  }
-    ,{flag_audio_button  ,AUDIO_POPSUP_SWCFG       ,"T1 - 10.03K - Audio Remote S7 Button" }
-    ,{flag_audio_button  ,AUDIO_POPSUP_SWCFG       ,"T1 - 12.03K - Audio Remote S8 Button" }
-    ,{flag_audio_button  ,AUDIO_POPSUP_SWCFG       ,"T1 - 14.46K - Audio Remote S9 Button" }
-    ,{flag_audio_button  ,AUDIO_POPSUP_SWCFG       ,"T1 - 17.26K - Audio Remote S10 Button"}
-    ,{flag_audio_button  ,AUDIO_POPSUP_SWCFG       ,"T1 - 20.5K - Audio Remote S11 Button" }
-    ,{flag_audio_button  ,AUDIO_POPSUP_SWCFG       ,"T1 - 24.07K - Audio Remote S12 Button"}
-    ,{flag_uart          ,BIT_ASW_MAN_CTRL_UART_ON ,"T1 - 28.7K - Factory Boot OFF - UART" }
-    ,{flag_uart          ,BIT_ASW_MAN_CTRL_UART_ON ,"T1 - 34K - Factory Boot ON - UART"    }
-    ,{flag_usb			 ,BIT_ASW_MAN_CTRL_USB_D_ON,"T1 - 40.2K - Factory Boot OFF - USB"  }
-    ,{flag_usb			 ,BIT_ASW_MAN_CTRL_USB_D_ON,"T1 - 49.9K - Factory Boot ON - USB"   }
-    ,{flag_none          ,SWCFG_OFF                ,"T1 - 64.9K - Reserved"                }
-    ,{flag_none			 ,SWCFG_OFF                ,"T1 - 80.07K - Reserved"               }
-    ,{flag_none			 ,SWCFG_OFF                ,"T1 - 102K - Reserved"                 }
-    ,{flag_none          ,SWCFG_OFF                ,"T1 - 121K - Reserved"                 }
-    ,{flag_none          ,SWCFG_OFF                ,"T1 - 150K - Reserved"                 }
-    ,{flag_none          ,SWCFG_OFF                ,"T1 - 200K - Reserved"                 }
+     {flag_usb           ,BIT_ASW_MAN_CTRL_USB_D_ON,"T1 - SHORTED (USB)"                   }/* 0x00 */
+    ,{flag_audio_button  ,AUDIO_POPSUP_SWCFG       ,"T1 - 2K - Audio Send - End Button"    }/* 0x01 */
+    ,{flag_audio_button  ,AUDIO_POPSUP_SWCFG       ,"T1 - 2.604K - Audio Remote S1 Button" }/* 0x02 */
+    ,{flag_audio_button  ,AUDIO_POPSUP_SWCFG       ,"T1 - 3.208K - Audio Remote S2 Button" }/* 0x03 */
+    ,{flag_audio_button  ,AUDIO_POPSUP_SWCFG       ,"T1 - 4.014K - Audio Remote S3 Button" }/* 0x04 */
+    ,{flag_audio_button  ,AUDIO_POPSUP_SWCFG       ,"T1 - 4.82K - Audio Remote S4 Button"  }/* 0x05 */
+    ,{flag_audio_button  ,AUDIO_POPSUP_SWCFG       ,"T1 - 6.03K - Audio Remote S5 Button"  }/* 0x06 */
+    ,{flag_audio_button  ,AUDIO_POPSUP_SWCFG       ,"T1 - 8.03K - Audio Remote S6 Button"  }/* 0x07 */
+    ,{flag_audio_button  ,AUDIO_POPSUP_SWCFG       ,"T1 - 10.03K - Audio Remote S7 Button" }/* 0x08 */
+    ,{flag_audio_button  ,AUDIO_POPSUP_SWCFG       ,"T1 - 12.03K - Audio Remote S8 Button" }/* 0x09 */
+    ,{flag_audio_button  ,AUDIO_POPSUP_SWCFG       ,"T1 - 14.46K - Audio Remote S9 Button" }/* 0x0A */
+    ,{flag_audio_button  ,AUDIO_POPSUP_SWCFG       ,"T1 - 17.26K - Audio Remote S10 Button"}/* 0x0B */
+    ,{flag_audio_button  ,AUDIO_POPSUP_SWCFG       ,"T1 - 20.5K - Audio Remote S11 Button" }/* 0x0C */
+    ,{flag_audio_button  ,AUDIO_POPSUP_SWCFG       ,"T1 - 24.07K - Audio Remote S12 Button"}/* 0x0D */
+    ,{flag_uart          ,BIT_ASW_MAN_CTRL_UART_ON ,"T1 - 28.7K - Factory Boot OFF - UART" }/* 0x0E */
+    ,{flag_uart          ,BIT_ASW_MAN_CTRL_UART_ON ,"T1 - 34K - Factory Boot ON - UART"    }/* 0x0F */
+    ,{flag_usb			 ,BIT_ASW_MAN_CTRL_USB_D_ON,"T1 - 40.2K - Factory Boot OFF - USB"  }/* 0x10 */
+    ,{flag_usb			 ,BIT_ASW_MAN_CTRL_USB_D_ON,"T1 - 49.9K - Factory Boot ON - USB"   }/* 0x11 */
+    ,{flag_none          ,SWCFG_OFF                ,"T1 - 64.9K - Reserved"                }/* 0x12 */
+    ,{flag_none			 ,SWCFG_OFF                ,"T1 - 80.07K - Reserved"               }/* 0x13 */
+    ,{flag_none			 ,SWCFG_OFF                ,"T1 - 102K - Reserved"                 }/* 0x14 */
+    ,{flag_none          ,SWCFG_OFF                ,"T1 - 121K - Reserved"                 }/* 0x15 */
+    ,{flag_none          ,SWCFG_OFF                ,"T1 - 150K - Reserved"                 }/* 0x16 */
+    ,{flag_none          ,SWCFG_OFF                ,"T1 - 200K - Reserved"                 }/* 0x17 */
     ,{flag_no_buttons|flag_mic|flag_audio
-                         ,AUDIO_BUTTON_MICID_SWCFG ,"T1 - 255K - Audio with mic' on ID --> no polling"    }
-    ,{flag_none			 ,SWCFG_OFF                ,"T1 - 301K - Reserved"                 }
-    ,{flag_no_buttons    ,SWCFG_OFF                ,"T1 - 365K - Reserved"                 }
-    ,{flag_none          ,SWCFG_OFF                ,"T1 - 442K - Reserved"                 }
-    ,{flag_none			 ,SWCFG_OFF                ,"T1 - 523K - Reserved"                 }
-    ,{flag_none			 ,SWCFG_OFF                ,"T1 - 619K - Reserved"                 }
+                         ,AUDIO_BUTTON_MICID_SWCFG ,"T1 - 255K - Audio with mic' on ID --> no polling"    }/* 0x18 */
+    ,{flag_none			 ,SWCFG_OFF                ,"T1 - 301K - Reserved"                 }/* 0x19 */
+    ,{flag_no_buttons    ,SWCFG_OFF                ,"T1 - 365K - Reserved"                 }/* 0x1A */
+    ,{flag_none          ,SWCFG_OFF                ,"T1 - 442K - Reserved"                 }/* 0x1B */
+    ,{flag_none			 ,SWCFG_OFF                ,"T1 - 523K - Reserved"                 }/* 0x1C */
+    ,{flag_none			 ,SWCFG_OFF                ,"T1 - 619K - Reserved"                 }/* 0x1D */
     ,{flag_audio_poll|flag_mic|flag_audio
-                         ,AUDIO_BUTTON_MICVB_SWCFG ,"T1 - 1001K - Audio with mic' on VBUS" }
-    ,{flag_none			 ,SWCFG_OFF                ,"T1 - OPEN - Reserved"                 }
-    ,{flag_none          ,MHL_SWCFG                ,"T1 - 1K - MHL"                        }
-    ,{flag_none          ,MHL_SWCFG                ,"T1 - USER SPEC"                       }
-	,{flag_none          ,MHL_SWCFG                ,"T1 - no connection"                   }
+                         ,AUDIO_BUTTON_MICVB_SWCFG ,"T1 - 1001K - Audio with mic' on VBUS" }/* 0x1E */
+    ,{flag_none			 ,SWCFG_OFF                ,"T1 - OPEN - Reserved"                 }/* 0x1F */
+    ,{flag_none          ,MHL_SWCFG                ,"T1 - 1K - MHL"                        }/* 0x20 */
+    ,{flag_none          ,MHL_SWCFG                ,"T1 - USER SPEC"                       }/* 0x21 */
+	,{flag_none          ,MHL_SWCFG                ,"T1 - no connection"                   }/* 0x22 = MAX_IMPEDANCE_VALUES - 1 */
 };
 
+/* Impedance measurement table for SiI8558 */
 struct rid_entry tableOneMCPC[] = {
-     {flag_usb         ,BIT_ASW_MAN_CTRL_USB_D_ON  ,"T1'MCPC - SHORTED - Reserved" }
-    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 2K - Reserved"        }
-    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 2.604K - Reserved"    }
-    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 3.208K - Reserved"    }
-    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 4.014K - Reserved"    }
-    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 4.82K - Reserved"     }
-    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 6.03K - Reserved"     }
-    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 8.03K - Reserved"     }
-    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 10.03K - Reserved"    }
-    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 12.03K - Reserved"    }
-    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 14.46K - Reserved"    }
-    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 17.26K - Reserved"    }
-    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 20.5K - Reserved"     }
-    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 24.07K - Reserved"    }
-    ,{flag_none        ,SWCFG_OFF                  ,"T1'MCPC - 28.7K - Reserved"     }
-    ,{flag_none        ,SWCFG_OFF                  ,"T1'MCPC - 34K - Reserved"       }
-    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 40.2K - RCSW 47K"     }
-    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 49.9K - RCSW 47K"     }
-    ,{flag_none        ,SWCFG_OFF                  ,"T1'MCPC - 64.9K - Reserved"     }
-	,{flag_none        ,SWCFG_OFF                  ,"T1'MCPC - 80.07K - Reserved"    }
-    ,{flag_none        ,SWCFG_OFF                  ,"T1'MCPC - 102K - Reserved"      }
-    ,{flag_none        ,SWCFG_OFF                  ,"T1'MCPC - 121K - Reserved"      }
-    ,{flag_none        ,SWCFG_OFF                  ,"T1'MCPC - 150K - Ridm 180K"     }
-    ,{flag_none        ,SWCFG_OFF                  ,"T1'MCPC - 200K - Ridm 180K"     }
-    ,{MCPC_FLAGS       ,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 255K - RFSEL1 + RCSW" 	}
-    ,{MCPC_FLAGS       ,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 301K - RFSEL1 + RCSW" 	}
-    ,{flag_none        ,SWCFG_OFF                  ,"T1'MCPC - 365K - RIDr 390"      	}
-    ,{flag_none        ,SWCFG_OFF                  ,"T1'MCPC - 442K - RIDr 390"      	}
-    ,{flag_none        ,SWCFG_OFF                  ,"T1'MCPC - 523K - Reserved" 	 	}
-    ,{MCPC_FLAGS       ,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 619K - RFSEL2 + RCSWT"	}
-    ,{MCPC_FLAGS       ,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 1001K - RFSEL2 + RCSWT"	}
-    ,{flag_none		   ,SWCFG_OFF                  ,"T1'MCPC - OPEN - Reserved"			}
-    ,{flag_none        ,MHL_SWCFG                  ,"T1'MCPC - 1K - MHL"                }
-    ,{flag_none        ,MHL_SWCFG                  ,"T1'MCPC - USER SPEC"               }
-	,{flag_none        ,MHL_SWCFG                  ,"T1' - no connection"               }
+     {flag_usb         ,BIT_ASW_MAN_CTRL_USB_D_ON  ,"T1'MCPC - SHORTED - Reserved" }/* 0x00 */
+    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 2K - Reserved"        }/* 0x01 */
+    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 2.604K - Reserved"    }/* 0x02 */
+    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 3.208K - Reserved"    }/* 0x03 */
+    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 4.014K - Reserved"    }/* 0x04 */
+    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 4.82K - Reserved"     }/* 0x05 */
+    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 6.03K - Reserved"     }/* 0x06 */
+    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 8.03K - Reserved"     }/* 0x07 */
+    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 10.03K - Reserved"    }/* 0x08 */
+    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 12.03K - Reserved"    }/* 0x09 */
+    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 14.46K - Reserved"    }/* 0x0A */
+    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 17.26K - Reserved"    }/* 0x0B */
+    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 20.5K - Reserved"     }/* 0x0C */
+    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 24.07K - Reserved"    }/* 0x0D */
+    ,{flag_none        ,SWCFG_OFF                  ,"T1'MCPC - 28.7K - Reserved"     }/* 0x0E */
+    ,{flag_none        ,SWCFG_OFF                  ,"T1'MCPC - 34K - Reserved"       }/* 0x0F */
+    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 40.2K - RCSW 47K"     }/* 0x10 */
+    ,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 49.9K - RCSW 47K"     }/* 0x11 */
+    ,{flag_none        ,SWCFG_OFF                  ,"T1'MCPC - 64.9K - Reserved"     }/* 0x12 */
+	,{flag_none        ,SWCFG_OFF                  ,"T1'MCPC - 80.07K - Reserved"    }/* 0x13 - needs audio polling */
+    ,{flag_none        ,SWCFG_OFF                  ,"T1'MCPC - 102K - Reserved"      }/* 0x14 - needs audio polling */
+    ,{flag_none        ,SWCFG_OFF                  ,"T1'MCPC - 121K - Reserved"      }/* 0x15 */
+    ,{flag_none        ,SWCFG_OFF                  ,"T1'MCPC - 150K - Ridm 180K"     }/* 0x16 */
+    ,{flag_none        ,SWCFG_OFF                  ,"T1'MCPC - 200K - Ridm 180K"     }/* 0x17 */
+    ,{MCPC_FLAGS       ,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 255K - RFSEL1 + RCSW" 	}/* 0x18 */
+    ,{MCPC_FLAGS       ,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 301K - RFSEL1 + RCSW" 	}/* 0x19 */
+    ,{flag_none        ,SWCFG_OFF                  ,"T1'MCPC - 365K - RIDr 390"      	}/* 0x1A - needs audio polling */
+    ,{flag_none        ,SWCFG_OFF                  ,"T1'MCPC - 442K - RIDr 390"      	}/* 0x1B */
+    ,{flag_none        ,SWCFG_OFF                  ,"T1'MCPC - 523K - Reserved" 	 	}/* 0x1C *//* for demo only */
+    ,{MCPC_FLAGS       ,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 619K - RFSEL2 + RCSWT"	}/* 0x1D */
+    ,{MCPC_FLAGS       ,AUDIO_POPSUP_SWCFG         ,"T1'MCPC - 1001K - RFSEL2 + RCSWT"	}/* 0x1E - needs audio polling */
+    ,{flag_none		   ,SWCFG_OFF                  ,"T1'MCPC - OPEN - Reserved"			}/* 0x1F */
+    ,{flag_none        ,MHL_SWCFG                  ,"T1'MCPC - 1K - MHL"                }/* 0x20 */
+    ,{flag_none        ,MHL_SWCFG                  ,"T1'MCPC - USER SPEC"               }/* 0x21 */
+	,{flag_none        ,MHL_SWCFG                  ,"T1' - no connection"               }/* 0x22 = MAX_IMPEDANCE_VALUES - 1 */
 };
 
 struct rid_entry tableTwo[] = {
-	 {flag_usb         ,BIT_ASW_MAN_CTRL_USB_D_ON  ,"T2 - SHORTED"                          }
-	,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T2 - 2K - Audio Send-End Button"       }
-	,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T2 - 2.604K - Audio Remote S1 Button"  }
-	,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T2 - 3.208K - Audio Remote S2 Button"  }
-	,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T2 - 4.014K - Audio Remote S3 Button"  }
-	,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T2 - 4.82K - Audio Remote S4 Button"   }
-	,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T2 - 6.03K - Audio Remote S5 Button"   }
-	,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T2 - 8.03K - Audio Remote S6 Button"   }
-	,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T2 - 10.03K - Audio Remote S7 Button"  }
-	,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T2 - 12.03K - Audio Remote S8 Button"  }
-	,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T2 - 14.46K - Audio Remote S9 Button"  }
-	,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T2 - 17.26K - Audio Remote S10 Button" }
-	,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T2 - 20.5K - Audio Remote S11 Button"  }
-	,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T2 - 24.07K - Audio Remote S12 Button" }
-	,{flag_uart        ,BIT_ASW_MAN_CTRL_UART_ON   ,"T2 - 56K - Factory Boot OFF-UART"      }
-	,{flag_uart        ,BIT_ASW_MAN_CTRL_UART_ON   ,"T2 - 100K - Factory Boot ON-UART"      }
-	,{flag_usb         ,BIT_ASW_MAN_CTRL_USB_D_ON  ,"T2 - 130K - Factory Boot OFF-USB"      }
-	,{flag_usb         ,BIT_ASW_MAN_CTRL_USB_D_ON  ,"T2 - 180K - Factory Boot ON-USB"       }
-	,{flag_none        ,SWCFG_OFF                  ,"T2 - 240K - Reserved"                  }
-	,{flag_none        ,SWCFG_OFF                  ,"T2 - 330K - Reserved"                  }
-	,{flag_none        ,SWCFG_OFF                  ,"T2 - 430K - Reserved"                  }
-	,{flag_none        ,SWCFG_OFF                  ,"T2 - 620K - Reserved"                  }
-	,{flag_none        ,SWCFG_OFF                  ,"T2 - 910K - Reserved"                  }
-	,{flag_none        ,SWCFG_OFF                  ,"T2 - OPEN - Reserved"                  }
-	,{flag_boot        ,SWCFG_OFF                  ,"T2 - N/A - Reserved"                   }
-	,{flag_boot        ,SWCFG_OFF                  ,"T2 - N/A - Reserved"                   }
-	,{flag_boot        ,SWCFG_OFF                  ,"T2 - N/A - Reserved"                   }
-	,{flag_boot        ,SWCFG_OFF                  ,"T2 - N/A - Reserved"                   }
-	,{flag_boot        ,SWCFG_OFF                  ,"T2 - N/A - Reserved"                   }
-	,{flag_boot        ,SWCFG_OFF                  ,"T2 - N/A - Reserved"                   }
-	,{flag_boot        ,SWCFG_OFF                  ,"T2 - N/A - Reserved"                   }
-	,{flag_boot        ,SWCFG_OFF                  ,"T2 - N/A - Reserved"                   }
-	,{flag_none        ,MHL_SWCFG                  ,"T2 - 1K - MHL"                         }
-	,{flag_none        ,MHL_SWCFG                  ,"T2 - USER SPEC"                        }
-	,{flag_none        ,MHL_SWCFG                  ,"T2 - no connection"                   }
+	 {flag_usb         ,BIT_ASW_MAN_CTRL_USB_D_ON  ,"T2 - SHORTED"                          }/* 0x00 */
+	,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T2 - 2K - Audio Send-End Button"       }/* 0x01 */
+	,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T2 - 2.604K - Audio Remote S1 Button"  }/* 0x02 */
+	,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T2 - 3.208K - Audio Remote S2 Button"  }/* 0x03 */
+	,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T2 - 4.014K - Audio Remote S3 Button"  }/* 0x04 */
+	,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T2 - 4.82K - Audio Remote S4 Button"   }/* 0x05 */
+	,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T2 - 6.03K - Audio Remote S5 Button"   }/* 0x06 */
+	,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T2 - 8.03K - Audio Remote S6 Button"   }/* 0x07 */
+	,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T2 - 10.03K - Audio Remote S7 Button"  }/* 0x08 */
+	,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T2 - 12.03K - Audio Remote S8 Button"  }/* 0x09 */
+	,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T2 - 14.46K - Audio Remote S9 Button"  }/* 0x0A */
+	,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T2 - 17.26K - Audio Remote S10 Button" }/* 0x0B */
+	,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T2 - 20.5K - Audio Remote S11 Button"  }/* 0x0C */
+	,{flag_audio_button,AUDIO_POPSUP_SWCFG         ,"T2 - 24.07K - Audio Remote S12 Button" }/* 0x0D */
+	,{flag_uart        ,BIT_ASW_MAN_CTRL_UART_ON   ,"T2 - 56K - Factory Boot OFF-UART"      }/* 0x0E */
+	,{flag_uart        ,BIT_ASW_MAN_CTRL_UART_ON   ,"T2 - 100K - Factory Boot ON-UART"      }/* 0x0F */
+	,{flag_usb         ,BIT_ASW_MAN_CTRL_USB_D_ON  ,"T2 - 130K - Factory Boot OFF-USB"      }/* 0x10 */
+	,{flag_usb         ,BIT_ASW_MAN_CTRL_USB_D_ON  ,"T2 - 180K - Factory Boot ON-USB"       }/* 0x11 */
+	,{flag_none        ,SWCFG_OFF                  ,"T2 - 240K - Reserved"                  }/* 0x12 */
+	,{flag_none        ,SWCFG_OFF                  ,"T2 - 330K - Reserved"                  }/* 0x13 */
+	,{flag_none        ,SWCFG_OFF                  ,"T2 - 430K - Reserved"                  }/* 0x14 */
+	,{flag_none        ,SWCFG_OFF                  ,"T2 - 620K - Reserved"                  }/* 0x15 */
+	,{flag_none        ,SWCFG_OFF                  ,"T2 - 910K - Reserved"                  }/* 0x16 */
+	,{flag_none        ,SWCFG_OFF                  ,"T2 - OPEN - Reserved"                  }/* 0x17 */
+	,{flag_boot        ,SWCFG_OFF                  ,"T2 - N/A - Reserved"                   }/* 0x18 */
+	,{flag_boot        ,SWCFG_OFF                  ,"T2 - N/A - Reserved"                   }/* 0x19 */
+	,{flag_boot        ,SWCFG_OFF                  ,"T2 - N/A - Reserved"                   }/* 0x1A */
+	,{flag_boot        ,SWCFG_OFF                  ,"T2 - N/A - Reserved"                   }/* 0x1B */
+	,{flag_boot        ,SWCFG_OFF                  ,"T2 - N/A - Reserved"                   }/* 0x1C */
+	,{flag_boot        ,SWCFG_OFF                  ,"T2 - N/A - Reserved"                   }/* 0x1D */
+	,{flag_boot        ,SWCFG_OFF                  ,"T2 - N/A - Reserved"                   }/* 0x1E */
+	,{flag_boot        ,SWCFG_OFF                  ,"T2 - N/A - Reserved"                   }/* 0x1F */
+	,{flag_none        ,MHL_SWCFG                  ,"T2 - 1K - MHL"                         }/* 0x20 */
+	,{flag_none        ,MHL_SWCFG                  ,"T2 - USER SPEC"                        }/* 0x21 */
+	,{flag_none        ,MHL_SWCFG                  ,"T2 - no connection"                   }/* 0x22 = MAX_IMPEDANCE_VALUES - 1 */
 };
 
 char *table_asw_mon[]={
@@ -374,7 +382,7 @@ extern struct mhl_drv_info drv_info;
 
 #define SILICON_IMAGE_ADOPTER_ID 322
 
-#define TX_HW_RESET_PERIOD	10	
+#define TX_HW_RESET_PERIOD	10	/* 10 ms. */
 #define TX_HW_RESET_DELAY	100
 #define TX_EDID_POLL_MAX 	256
 
@@ -382,16 +390,16 @@ static uint8_t colorSpaceTranslateInfoFrameToHw[] = {
 		BIT_TPI_INPUT_FORMAT_RGB,
 		BIT_TPI_INPUT_FORMAT_YCbCr422,
 		BIT_TPI_INPUT_FORMAT_YCbCr444,
-		BIT_TPI_INPUT_FORMAT_INTERNAL_RGB	
+		BIT_TPI_INPUT_FORMAT_INTERNAL_RGB	/* reserved for future */
 };
 
-#ifdef ENABLE_GEN2 
+#ifdef ENABLE_GEN2 //(
 static	void	enable_gen2_write_burst(struct drv_hw_context *hw_context)
 {
-	
+	/*  enable Gen2 Write Burst interrupt, MSC and EDID interrupts. */
 
 	if(hw_context->ready_for_mdt) {
-		mhl_tx_write_reg(hw_context, REG_CBUS_MDT_RCV_TIMEOUT, 100);	
+		mhl_tx_write_reg(hw_context, REG_CBUS_MDT_RCV_TIMEOUT, 100);	/* 2 second timeout */
 		mhl_tx_write_reg(hw_context, REG_CBUS_MDT_RCV_CONTROL, BIT_CBUS_MDT_RCV_CONTROL_RCV_EN_ENABLE);
 		enable_intr(hw_context, INTR_G2WB, BIT_MDT_RXFIFO_DATA_RDY);
 
@@ -401,12 +409,12 @@ static	void	enable_gen2_write_burst(struct drv_hw_context *hw_context)
 
 static void disable_gen2_write_burst(struct drv_hw_context *hw_context)
 {
-	
+	/*  disable Gen2 Write Burst engine to perform it using legacy WRITE_BURST */
 	mhl_tx_write_reg(hw_context, REG_CBUS_MDT_RCV_CONTROL, BIT_CBUS_MDT_RCV_CONTROL_RCV_EN_DISABLE);
 	enable_intr(hw_context, INTR_G2WB, 0);
 	hw_context->gen2_write_burst = false;
 }
-#endif 
+#endif //)
 int __si_8240_8558_drv_ddc_bypass_control(char *file,int iLine,struct drv_hw_context *hw_context,int bypass)
 {
 	int ret_val=0;
@@ -487,7 +495,7 @@ bool si_mhl_tx_drv_issue_edid_read_request(struct drv_hw_context *hw_context,
 				hw_context->current_edid_request_block,
 				hw_context->edid_fifo_block_number);
 
-		
+		/* Setup auto increment and kick off read */
 		mhl_tx_write_reg(hw_context, REG_EDID_CTRL
 				, BIT_EDID_CTRL_EDID_PRIME_VALID_DISABLE
 				| BIT_EDID_CTRL_FIFO_SELECT_EDID
@@ -496,9 +504,9 @@ bool si_mhl_tx_drv_issue_edid_read_request(struct drv_hw_context *hw_context,
 				);
 
 		si_mhl_tx_drv_reset_ddc_fifo(hw_context);
-		
+		/* Setup which block to read */
 		if( 0 == block_number) {
-			
+			/* Enable EDID interrupt */
 			enable_intr(hw_context, INTR_EDID,
 						   ( BIT_INTR9_DEVCAP_DONE_MASK
 							| BIT_INTR9_EDID_DONE_MASK
@@ -528,15 +536,27 @@ bool si_mhl_tx_drv_issue_edid_read_request(struct drv_hw_context *hw_context,
 	}
 }
 
+/*
+ * si_mhl_tx_drv_send_cbus_command
+ *
+ * Write the specified Sideband Channel command to the CBUS.
+ * such as READ_DEVCAP, SET_INT, WRITE_STAT, etc.
+ * Command can be a MSC_MSG command (RCP/RAP/RCPK/RCPE/RAPK), or another command
+ * Parameters:
+ *              req     - Pointer to a cbus_req_t structure containing the
+ *                        command to write
+ * Returns:     true    - successful write
+ *              false   - write failed
+ */
 bool si_mhl_tx_drv_send_cbus_command(struct drv_hw_context *hw_context, struct cbus_req *req)
 {
 	bool	success = true;
-	uint8_t	block_write_buffer [3];	
+	uint8_t	block_write_buffer [3];	// used for efficient block writes
 
-#ifdef ENABLE_GEN2 
-	
+#ifdef ENABLE_GEN2 //(
+	/* Disable h/w automation of WRITE_BURST until this command completes */
 	disable_gen2_write_burst(hw_context);
-#endif 
+#endif //)
 	switch (req->command) {
 	case MHL_SET_INT:
 		MHL_TX_DBG_INFO(hw_context, "SET_INT reg: 0x%02x data: 0x%02x\n",
@@ -566,12 +586,12 @@ bool si_mhl_tx_drv_send_cbus_command(struct drv_hw_context *hw_context, struct c
 
 	case MHL_READ_DEVCAP:
 		MHL_TX_DBG_INFO(hw_context,"Trigger DEVCAP Read\n");
-		
+		/* Enable DEVCAP_DONE interrupt */
 		enable_intr(hw_context, INTR_EDID, BIT_INTR9_DEVCAP_DONE);
 
-		
+		/* don't call si_mhl_tx_drv_reset_ddc_fifo here */
 
-		
+		/* read the entire DEVCAP array in one command */
 		mhl_tx_write_reg(hw_context, REG_TPI_CBUS_START,
 				BIT_TPI_CBUS_START_DEVCAP_READ_START);
 		break;
@@ -582,14 +602,14 @@ bool si_mhl_tx_drv_send_cbus_command(struct drv_hw_context *hw_context, struct c
 				hw_context->current_edid_request_block);
 		break;
 
-	case MHL_GET_STATE:			
-	case MHL_GET_VENDOR_ID:		
-	case MHL_SET_HPD:			
-	case MHL_CLR_HPD:			
-	case MHL_GET_SC1_ERRORCODE:	
-	case MHL_GET_DDC_ERRORCODE:	
-	case MHL_GET_MSC_ERRORCODE:	
-	case MHL_GET_SC3_ERRORCODE:	
+	case MHL_GET_STATE:			/* 0x62 - */
+	case MHL_GET_VENDOR_ID:		/* 0x63 - for vendor id */
+	case MHL_SET_HPD:			/* 0x64	- Set Hot Plug Detect */
+	case MHL_CLR_HPD:			/* 0x65	- Clear Hot Plug Detect */
+	case MHL_GET_SC1_ERRORCODE:	/* 0x69	- Get channel 1 command error code */
+	case MHL_GET_DDC_ERRORCODE:	/* 0x6A	- Get DDC channel command error code */
+	case MHL_GET_MSC_ERRORCODE:	/* 0x6B	- Get MSC command error code */
+	case MHL_GET_SC3_ERRORCODE:	/* 0x6D	- Get channel 3 command error code */
 		MHL_TX_DBG_INFO(hw_context, "Sending MSC command %02x, %02x, %02x\n",
 				req->command, req->reg, req->reg_data);
 		mhl_tx_write_reg(hw_context,REG_CBUS_MSC_CMD_OR_OFFSET, req->command);
@@ -606,6 +626,11 @@ bool si_mhl_tx_drv_send_cbus_command(struct drv_hw_context *hw_context, struct c
 		block_write_buffer[1] = req->msg_data[0];
 		block_write_buffer[2] = req->msg_data[1];
 
+		/*
+		   mhl_tx_write_reg(hw_context,REG_CBUS_MSC_CMD_OR_OFFSET, req->command);
+		   mhl_tx_write_reg(hw_context,REG_CBUS_MSC_1ST_TRANSMIT_DATA, req->msg_data[0]);
+		   mhl_tx_write_reg(hw_context,REG_CBUS_MSC_2ND_TRANSMIT_DATA, req->msg_data[1]);
+		   */
 		mhl_tx_write_reg_block(hw_context,REG_CBUS_MSC_CMD_OR_OFFSET, 3, block_write_buffer);
 		mhl_tx_write_reg(hw_context,REG_CBUS_MSC_COMMAND_START,
 				BIT_CBUS_MSC_MSG);
@@ -622,7 +647,7 @@ bool si_mhl_tx_drv_send_cbus_command(struct drv_hw_context *hw_context, struct c
 		mhl_tx_write_reg(hw_context, REG_CBUS_MSC_WRITE_BURST_DATA_LEN,
 				req->length -1);
 
-		
+		/* Now copy all bytes from array to local scratchpad */
 		mhl_tx_write_reg_block(hw_context, REG_CBUS_WB_XMIT_DATA_0,
 				req->length, req->msg_data);
 		mhl_tx_write_reg(hw_context,REG_CBUS_MSC_COMMAND_START,
@@ -704,8 +729,8 @@ int si_mhl_tx_drv_get_edid_fifo_next_block(struct drv_hw_context *hw_context,
 
 	mhl_tx_write_reg(hw_context, REG_EDID_FIFO_ADDR, offset);
 
-#if 0 
-    
+#if 0 //( unnecessary here
+    // choose EDID instead of devcap to appear at the FIFO
 	mhl_tx_write_reg(hw_context
 			, REG_EDID_CTRL
 			, BIT_EDID_CTRL_EDID_PRIME_VALID_DISABLE
@@ -713,7 +738,7 @@ int si_mhl_tx_drv_get_edid_fifo_next_block(struct drv_hw_context *hw_context,
 			| BIT_EDID_CTRL_EDID_FIFO_ADDR_AUTO_ENABLE
 			| BIT_EDID_CTRL_EDID_MODE_EN_ENABLE
 			);
-#endif 
+#endif //)
 
 	ret_val = mhl_tx_read_reg_block(hw_context
 		, REG_EDID_FIFO_RD_DATA
@@ -760,7 +785,7 @@ static uint8_t calculate_avi_info_frame_checksum(hw_avi_payload_t *payload)
 {
 	uint8_t checksum;
 
-	checksum = 0x82 + 0x02 + 0x0D;	
+	checksum = 0x82 + 0x02 + 0x0D;	/* these are set by the hardware */
 	return calculate_generic_checksum(payload->ifData, checksum, SIZE_AVI_INFOFRAME);
 }
 static int is_valid_avi_info_frame(struct mhl_dev_context *dev_context,
@@ -796,11 +821,18 @@ static int is_valid_vsif(struct mhl_dev_context *dev_context,
 					vendor_specific_info_frame_t *vsif)
 {
 	uint8_t	checksum;
+	/*
+		Calculate the checksum assuming that the payload
+			includes the checksum
+	*/
 	checksum = calculate_generic_checksum((uint8_t *)vsif, 0,
 			sizeof(vsif->header) + vsif->header.length );
 	if (0 != checksum) {
 		MHL_TX_DBG_WARN(dev_context, "VSIF info frame checksum is: 0x%02x "
 					   "should be 0\n", checksum);
+		/*
+			Try again, assuming that the header includes the checksum.
+		*/
 		checksum = calculate_generic_checksum((uint8_t *)vsif, 0,
 			sizeof(vsif->header) + vsif->header.length
 			+ sizeof(vsif->payLoad.checksum));
@@ -845,10 +877,10 @@ static	void	print_vic_modes(struct drv_hw_context *hw_context,uint8_t vic)
 				 ,{32,"1080P24"}
 				 ,{33,"1080P25"}
 				 ,{34,"1080P30"}
-				 ,{0,""} 
+				 ,{0,""} /* to handle the case where the VIC is not found in the table */
 	};
 #define	NUM_VIC_NAMES	(sizeof(vic_name_table)/sizeof(vic_name_table[0]) )
-	
+	/* stop before the terminator */
 	for (i = 0; i < (NUM_VIC_NAMES - 1); i++) {
 		if (vic == vic_name_table[i].vic) {
 			break;
@@ -861,6 +893,9 @@ static void set_mhl_zone_settings(struct mhl_dev_context *dev_context,
 					uint32_t pixel_clock_frequency)
 {
 	struct drv_hw_context	*hw_context = (struct drv_hw_context *)&dev_context->drv_context;
+	/*
+	 * Zone control setting as per pixel clock frequency
+	 */
 	if (pixel_clock_frequency > 75000000) {
 		MHL_TX_DBG_INFO(hw_context,"zone control: D0\n");
 		mhl_tx_write_reg(hw_context,REG_ZONE_CTRL_SW_RST,0xD0);
@@ -873,17 +908,30 @@ static void set_mhl_zone_settings(struct mhl_dev_context *dev_context,
 					pixel_clock_frequency,
 					hw_context->chip_device_id,
 					hw_context->chip_rev_id);
+	/*
+	 * TODO: Does 8558 need this setting for low frequency modes?
+	 *
+	 * don't do this for rev 0.0 of 8240 and 8558
+	 * Modes below 30MHz need a different zone control
+	 */
 	if (hw_context->chip_rev_id > 0) {
 		if (pixel_clock_frequency < 30000000)
 			mhl_tx_write_reg(hw_context, REG_TXMZ_CTRL2, 0x01);
 		else
 			mhl_tx_write_reg(hw_context, REG_TXMZ_CTRL2, 0x00);
 	}
+	/*
+	 * MSC WRITE_STATUS is required to prepare sink for new mode
+	 */
 	si_mhl_tx_set_status(dev_context, MHL_STATUS_REG_LINK_MODE,
 				dev_context->link_mode);
 
 }
 
+/*
+ * This function return the swing value by different pixel clock.
+ * If the debug_swiing_value has been set, the return it.
+ */
 static u8 get_swing_value(struct mhl_dev_context *dev_context, uint32_t pixel_clock_frequency)
 {
 	if (dev_context->debug_swing_value != -1)
@@ -897,6 +945,9 @@ static u8 get_swing_value(struct mhl_dev_context *dev_context, uint32_t pixel_cl
 		return dev_context->swing_value[2];
 }
 
+/*
+ * This function must not be called for DVI mode.
+ */
 static int	set_hdmi_params(struct mhl_dev_context *dev_context)
 {
 	uint32_t			pixel_clock_frequency;
@@ -912,18 +963,35 @@ static int	set_hdmi_params(struct mhl_dev_context *dev_context)
 		,use_hardware_totals
 	}timing_info_basis=use_avi_vic;
 
-	
+	/* Extract VIC from incoming AVIF */
 	input_video_code = hw_context->current_avi_info_frame.payLoad.hwPayLoad.namedIfData.
 											  ifData_u.bitFields.VIC;
 
+	/*
+	 * From VSIF bytes, figure out if we need to perform
+	 * frame packing or not. This helps decide if packed pixel
+	 * (16-bit) is required or not in conjunction with the VIC.
+	 */
 	threeDPixelClockRatio = 1;
 	fp_3d_mode = REG_VID_OVRRD_DEFVAL;
 
+	/*
+		HDMI spec. v1.4:
+		"When transmitting any 2D video format of section 6.3 above, an HDMI Source shall set
+		the VIC field to the Video Code for that format. See CEA-861-D section 6.4 for detatils.  The
+		additional VIC values from 60 to 64 are defined in Table 8-4.
+		When transmitting any 3D video format using the 3D_Structure field in the HDMI Vendor
+		Specific InfoFrame, an HDMI Source shall set the AVI InfoFrame VIC field to satisfy the
+		relation described in section 8.2.3.2.
+		When transmitting any extended video format indicated through use of the HDMI_VIC field
+		in the HDMI Vendor Specific InfoFrame or any other format which is not described in the
+		above cases, and HDMI Source shall set the AVI InfoFrame VIC field to zero."
+	*/
 	if (hw_context->valid_vsif) {
 			MHL_TX_DBG_WARN(, "valid HDMI VSIF\n");
 		if (hvfExtendedResolutionFormatPresent == hw_context->current_vs_info_frame.
 				payLoad.pb4.HDMI_Video_Format) {
-			
+			/* HDMI_VIC should contain one of 0x01 through 0x04 */
 			MHL_TX_DBG_ERR(,"HDMI extended resolution not supported for 8240/8558\n");
 			return false;
 		} else {
@@ -946,8 +1014,17 @@ static int	set_hdmi_params(struct mhl_dev_context *dev_context)
 				}
 			}
 		}
-	}else{ 
+	}else{ /* no VSIF */
 		if (0 == input_video_code.VIC) {
+			/*
+				This routine will not be called until we positively know (from the downstream EDID)
+					that the sink is HDMI.
+				We do not support DVI only sources.  The upstream source is expected to choose between
+					HDMI and DVI based upon the EDID that we present upstream.
+				The other information in the infoframe, even if it is non-zero, is not helpful for
+					determining the pixel clock frequency.
+				So we try as best we can to infer the pixel clock from the HTOTAL and VTOTAL registers.
+			*/
 			timing_info_basis = use_hardware_totals;
 			MHL_TX_DBG_WARN(,"no VSIF and AVI VIC is zero!!! trying HTOTAL/VTOTAL\n");
 		} else {
@@ -956,14 +1033,14 @@ static int	set_hdmi_params(struct mhl_dev_context *dev_context)
 	}
 
 	mhl_tx_write_reg(hw_context, REG_VID_OVRRD, fp_3d_mode);
-	
+	/* Do not remember previous VSIF */
 	hw_context->valid_vsif = 0;
 	hw_context->valid_avif = 0;
 
-	
+	/* make a copy of avif */
 	hw_context->outgoingAviPayLoad  = hw_context->current_avi_info_frame.payLoad.hwPayLoad;
 
-	
+	/* compute pixel frequency */
 	switch (timing_info_basis) {
 	case use_avi_vic:
 		pixel_clock_frequency = si_edid_find_pixel_clock_from_AVI_VIC(
@@ -982,7 +1059,7 @@ static int	set_hdmi_params(struct mhl_dev_context *dev_context)
 		break;
 	}
 
-	
+	/* extract input color space */
 	input_clr_spc = hw_context->current_avi_info_frame.payLoad.hwPayLoad.namedIfData.
 											  ifData_u.bitFields.pb1.colorSpace;
 
@@ -991,6 +1068,9 @@ static int	set_hdmi_params(struct mhl_dev_context *dev_context)
 		hw_context->current_avi_info_frame.payLoad.hwPayLoad.namedIfData.ifData_u.
 			infoFrameData[0]);
 
+	/*
+	 * decide about packed pixel mode
+	 */
 	pixel_clock_frequency *= threeDPixelClockRatio;
 	MHL_TX_DBG_INFO(hw_context, "pixel clock:%u\n",
 			pixel_clock_frequency);
@@ -999,13 +1079,13 @@ static int	set_hdmi_params(struct mhl_dev_context *dev_context)
 		pixel_clock_frequency, 24)) {
 		MHL_TX_DBG_INFO(hw_context, "OK for 24 bit pixels\n");
 	} else {
-		
+		/* not enough bandwidth for uncompressed video */
 		if (si_edid_sink_supports_YCbCr422(dev_context->edid_parser_context)) {
 			MHL_TX_DBG_INFO(hw_context, "Sink supports YCbCr422\n");
 
 			if (qualify_pixel_clock_for_mhl(
 				dev_context->edid_parser_context, pixel_clock_frequency, 16)) {
-				
+				/* enough for packed pixel */
 				packedPixelNeeded = 1;
 			} else {
 				MHL_TX_DBG_ERR(hw_context,"unsupported video mode."
@@ -1022,6 +1102,9 @@ static int	set_hdmi_params(struct mhl_dev_context *dev_context)
 		}
 	}
 
+	/*
+	 * Determine output color space if it needs to be 4:2:2 or same as input
+	 */
 	output_clr_spc = input_clr_spc;
 
 	if (packedPixelNeeded){
@@ -1031,7 +1114,7 @@ static int	set_hdmi_params(struct mhl_dev_context *dev_context)
 
 			dev_context->link_mode = MHL_STATUS_PATH_ENABLED | MHL_STATUS_CLK_MODE_PACKED_PIXEL;
 
-			
+			/* enforcing 4:2:2 if packed pixel. */
 			output_clr_spc = BIT_EDID_FIELD_FORMAT_YCbCr422;
 
 			mhl_tx_write_reg(hw_context
@@ -1068,12 +1151,12 @@ static int	set_hdmi_params(struct mhl_dev_context *dev_context)
 		mhl_tx_write_reg(hw_context, REG_MHLTX_CTL6, 0xA0);
 	}
 
-	
+	/* Set input color space */
 	mhl_tx_write_reg(hw_context
 			, REG_TPI_INPUT
 			, colorSpaceTranslateInfoFrameToHw[input_clr_spc]);
 
-	
+	/* Set output color space */
 	if (packedPixelNeeded) {
 		mhl_tx_write_reg(hw_context
 				, REG_TPI_OUTPUT
@@ -1085,6 +1168,11 @@ static int	set_hdmi_params(struct mhl_dev_context *dev_context)
 	}
 
 	set_mhl_zone_settings(dev_context,pixel_clock_frequency);
+	/*
+	 * Prepare outgoing AVIF for later programming the registers
+	 *
+	 * the checksum itself is included in the calculation.
+	 */
 	hw_context->outgoingAviPayLoad.namedIfData.checksum = 0;
 	hw_context->outgoingAviPayLoad.namedIfData.ifData_u.bitFields.pb1.colorSpace
 		= output_clr_spc;
@@ -1094,6 +1182,13 @@ static int	set_hdmi_params(struct mhl_dev_context *dev_context)
 	return true;
 }
 
+/*
+	process_info_frame_change
+		called by the MHL Tx driver when a
+        new AVI info frame is received from upstream
+		OR
+		called by customer's SOC video driver when a mode change is desired.
+*/
 
 void process_info_frame_change(struct drv_hw_context *hw_context,
 				vendor_specific_info_frame_t *vsif, avi_info_frame_t *avif)
@@ -1130,19 +1225,21 @@ void process_info_frame_change(struct drv_hw_context *hw_context,
 	}
 }
 
-#define dump_edid_fifo(hw_context, block_number) 
+#define dump_edid_fifo(hw_context, block_number) /* do nothing */
 
 static int init_rx_regs(struct drv_hw_context *hw_context)
 {
-	
+	/* power up the RX */
 	if (hw_context->chip_device_id == DEVICE_ID_8558) {
 		mhl_tx_write_reg(hw_context, REG_POWER_CTRL, 0x7D);
 	} else {
 		mhl_tx_write_reg(hw_context, REG_POWER_CTRL, 0x75);
 	}
-	
+	/* TODO: add to PR. Default for 2A4 is 0x0f */
 	mhl_tx_write_reg(hw_context, REG_RX_HDMI_CTRL3, 0x00);
 
+	/* Due to packet overflow, AVIF write using TPI:0C fails.
+	Until ready, we drop all packets*/
 	mhl_tx_write_reg(hw_context, REG_PKT_FILTER_0, 0xFF);
 	mhl_tx_write_reg(hw_context, REG_PKT_FILTER_1, 0xFF);
 
@@ -1160,11 +1257,16 @@ static void bch_force_avif(struct drv_hw_context *hw_context)
 }
 static void bch_setup(struct drv_hw_context *hw_context)
 {
-	
+	/*
+	 * This workaround ensures NEW_AVI interrupt when AVI does not change
+	 * but due to downstream HDMI or MHL hot plug, we toggle upstream HPD
+	 * and expect a new AVI.
+	 */
+	/* Clear BCH register for infr workaround */
 	mhl_tx_write_reg(hw_context, REG_RX_HDMI_CTRL4, 0);
 	mhl_tx_write_reg(hw_context, REG_HDMI_BCH_CORRECTED_THRESHOLD, 0);
 
-	
+	/* Clear NEW_AVI interrupt caused by above two lines.*/
 	mhl_tx_write_reg(hw_context,
 			g_intr_tbl[INTR_INFR].stat_page,
 			g_intr_tbl[INTR_INFR].stat_offset,
@@ -1220,7 +1322,7 @@ int si_mhl_tx_drv_set_upstream_edid(struct drv_hw_context *hw_context,
 		return -1;
 	}
 
-#ifdef NEVER 
+#ifdef NEVER //(
 	if(si_edid_sink_is_hdmi(hw_context->intr_info->edid_parser_context)) {
 		mhl_tx_write_reg(hw_context, TPI_SYSTEM_CONTROL_DATA_REG
 				, TMDS_OUTPUT_CONTROL_POWER_DOWN
@@ -1234,12 +1336,12 @@ int si_mhl_tx_drv_set_upstream_edid(struct drv_hw_context *hw_context,
 				| TMDS_OUTPUT_MODE_DVI
 				);
 	}
-#endif 
+#endif //)
 
 
 	init_rx_regs(hw_context);
 
-	
+	/* choose EDID instead of devcap to appear at the FIFO */
 	mhl_tx_write_reg(hw_context
 			, REG_EDID_CTRL
 			, BIT_EDID_CTRL_EDID_PRIME_VALID_DISABLE
@@ -1261,29 +1363,41 @@ int si_mhl_tx_drv_set_upstream_edid(struct drv_hw_context *hw_context,
 
 	MHL_TX_DBG_INFO(hw_context, "Expose EDID\n");
 
+	/* Enable CKDT interrupt only. For HDMI we must first wait for
+	 * stable CKDT, apply infoframe workaround then enable INTR_INFR
+	 */
 	enable_intr(hw_context
 			, INTR_CKDT
 			, (BIT_INTR5_CKDT_CHANGE | BIT_INTR5_SCDT_CHANGE));
 
-	
+	/* Disable EDID interrupt */
 	enable_intr(hw_context, INTR_EDID, 0);
 
-	
+	/* Enable h/w automation of WRITE_BURST */
 	hw_context->ready_for_mdt = true;
 
-#ifdef ENABLE_GEN2 
+#ifdef ENABLE_GEN2 //(
 	enable_gen2_write_burst(hw_context);
-#endif 
+#endif //)
 
+	/*
+		Before exposing the EDID to upstream device, setup to drop all packets.
+		This ensures we do not get Packet Overflow interrupt.
+		Dropping all packets means we still get the AVIF interrupts which is crucial.
+		Packet filters must be disabled until after TMDS is enabled.
+	*/
 	mhl_tx_write_reg(hw_context, REG_PKT_FILTER_0, 0xFF);
 	mhl_tx_write_reg(hw_context, REG_PKT_FILTER_1, 0xFF);
 
+	/*
+	 * enable infoframe interrupt
+	 */
 	enable_intr(hw_context
 				,INTR_INFR
 				,(BIT_INTR8_CEA_NEW_AVI | BIT_INTR8_CEA_NEW_VSI)
 				);
 
-	
+	/* HPD was held low all this time. Now we send an HPD high */
 	drive_hpd_high(hw_context);
 	return 0;
 }
@@ -1295,31 +1409,31 @@ static void power_up(struct drv_hw_context *hw_context)
 	MHL_TX_DBG_INFO(hw_context, "called\n");
 
 	if (hw_context->chip_device_id == DEVICE_ID_8558) {
-		
+		// Refer to the Power Up and Power Down flowchart in PR.
 
-		
+		// Assert SRST
 		mhl_tx_write_reg(hw_context, REG_POWER_CTRL, (0));
 
-		
+		// Turn the power switch ON
 		mhl_tx_write_reg(hw_context, REG_POWER_CTRL, (BIT_MASTER_POWER_CTRL));
 
-		
+		// Wait 50 ms
 		msleep(50);
 
-		
+		// Deassert SRST
 		mhl_tx_write_reg(hw_context, REG_POWER_CTRL, (BIT_OSC_EN | BIT_MASTER_POWER_CTRL));
 
-		
+		// Disable Isolation
 		mhl_tx_write_reg(hw_context, REG_POWER_CTRL, (BIT_OSC_EN | BIT_ISO_EN | BIT_MASTER_POWER_CTRL));
 
-		
+		// Enable Tx Core. Defer enabling Rx core until MHL is found.
 		mhl_tx_write_reg(hw_context, REG_POWER_CTRL, (BIT_PDNTX12 | BIT_OSC_EN | BIT_ISO_EN | BIT_PCLK_EN | BIT_MASTER_POWER_CTRL));
 	}
 	else
 	{
 		mhl_tx_write_reg(hw_context, REG_POWER_CTRL, (BIT_PDNTX12 | BIT_OSC_EN | BIT_PCLK_EN | BIT_MASTER_POWER_CTRL));
 
-		
+		/* Toggle power strobe on 8240 */
 		mhl_tx_modify_reg(hw_context, REG_DISC_CTRL1, BIT_DISC_CTRL1_STROBE_OFF, 0);
 	}
 }
@@ -1352,27 +1466,37 @@ static int init_regs(struct drv_hw_context *hw_context)
 
 	MHL_TX_DBG_INFO(hw_context, "called\n");
 
-	
+	/* default values for flags */
 	hw_context->video_ready = false;
 	hw_context->video_path = 1;
 	hw_context->ready_for_mdt = false;
 	hw_context->audio_poll_enabled = false;
 
 	hw_context->rx_hdmi_ctrl2_defval = REG_RX_HDMI_CTRL2_DEFVAL_DVI;
-	
+	/*
+	 * This workaround ensures NEW_AVI interrupt when AVI does not change
+	 * but due to downstream HDMI or MHL hot plug, we toggle upstream HPD
+	 * and expect a new AVI.
+	 */
+	/* Clear BCH register for infr workaround */
 	mhl_tx_write_reg(hw_context, REG_RX_HDMI_CTRL4, 0);
 	mhl_tx_write_reg(hw_context, REG_HDMI_BCH_CORRECTED_THRESHOLD, 0);
 
-	
+	/* Clear NEW_AVI interrupt caused by above two lines.*/
 	mhl_tx_write_reg(hw_context,
 			g_intr_tbl[INTR_INFR].stat_page,
 			g_intr_tbl[INTR_INFR].stat_offset,
 			BIT_INTR8_CEA_NEW_AVI);
 
-	
+	/* Drop the Hot Plug to upstream and hide EDID */
 	drive_hpd_low(hw_context);
 	mhl_tx_write_reg(hw_context, REG_EDID_CTRL, BIT_EDID_CTRL_EDID_FIFO_ADDR_AUTO_ENABLE);
 
+	/*
+	 * 8240 has correct default value for REG_DCTL
+	 * wake pulses necessary in all modes
+	 * No OTG, Discovery pulse proceed, Wake pulse not bypassed
+	 */
 	mhl_tx_write_reg(hw_context, REG_DISC_CTRL9
 						, BIT_DC9_WAKE_DRVFLT
 						| BIT_DC9_DISC_PULSE_PROCEED
@@ -1390,13 +1514,13 @@ static int init_regs(struct drv_hw_context *hw_context)
 		}
 
 	} else {
-		
+		/* Enable TxPLL Clock */
 		mhl_tx_write_reg(hw_context, REG_TMDS_CLK_EN, 0x01);
 
-		
+		/* Enable Tx Clock Path & Equalizer */
 		mhl_tx_write_reg(hw_context, REG_TMDS_CH_EN, 0x11);
 
-		
+		/* Enable TPI */
 		ret_val = mhl_tx_read_reg(hw_context, REG_TPI_SEL);
 		ret_val &= ~BIT_TPI_SEL_SW_TPI_EN_MASK;
 		ret_val |= BIT_TPI_SEL_SW_TPI_EN_HW_TPI;
@@ -1404,9 +1528,14 @@ static int init_regs(struct drv_hw_context *hw_context)
 
 		mhl_tx_write_reg(hw_context, TPI_HDCP_CONTROL_DATA_REG, 0);
 
+		/*
+		 * TODO: TPI:0xBB has bad default. Need to document in the PR
+		 * If this initialization is not changed, we have unstable HDCP
+		 * (while testing 9612 as source)
+		 */
 		mhl_tx_write_reg(hw_context, REG_TPI_HW_OPT3, 0x76);
 
-		
+		/* TX Source termination ON */
 		mhl_tx_write_reg(hw_context, REG_MHLTX_CTL1,
 						 BIT_MHLTX_CTL1_TX_TERM_MODE_100DIFF |
 						 BIT_MHLTX_CTL1_DISC_OVRIDE_ON);
@@ -1419,85 +1548,101 @@ static int init_regs(struct drv_hw_context *hw_context)
 						  BIT_CLK_SWING_CTL_MASK | BIT_DATA_SWING_CTL_MASK,
 						  0x33);
 
-		
+		/*
+		 * TODO: Is SRST required?
+		 */
+		/* synchronous s/w reset */
 		mhl_tx_write_reg(hw_context, REG_ZONE_CTRL_SW_RST, 0x60);
 		mhl_tx_write_reg(hw_context, REG_ZONE_CTRL_SW_RST, 0xD0);
 
 		if (hw_context->chip_device_id == DEVICE_ID_8558) {
 
-			
+			/* Tx data termination for 100 Ohm */
 			mhl_tx_write_reg(hw_context, REG_MHLTX_CFG_TERM, 0xE0);
 
-			
+			/* Enable Tx outputs */
 			mhl_tx_write_reg(hw_context, REG_MHLTX_CFG_OE, 0x3C);
 
-			
+			/* Ignore VBUS */
 			mhl_tx_write_reg(hw_context, REG_DISC_CTRL8,0x01);
 
-			
+			/* Enable CBUS discovery */
 			mhl_tx_write_reg(hw_context, REG_DISC_CTRL1,VAL_DISC_CTRL1_DEFAULT | BIT_DISC_CTRL1_MHL_DISCOVERY_ENABLE);
 
 		} else if (hw_context->chip_device_id == DEVICE_ID_8240) {
 
-			
+			/* Ignore VBUS, wait for usbint_clr */
 			mhl_tx_write_reg(hw_context, REG_DISC_CTRL8,0x03);
 
 			mhl_tx_write_reg(hw_context, REG_DISC_CTRL2, 0xA5);
 
-			
+			/* Enable CBUS discovery */
 	    	mhl_tx_write_reg(hw_context, REG_DISC_CTRL1,VAL_DISC_CTRL1_DEFAULT | BIT_DISC_CTRL1_STROBE_OFF | BIT_DISC_CTRL1_MHL_DISCOVERY_ENABLE);
 
-			
-			
+			/* MHL CBUS discovery */
+			/* TODO: This line is redundant. Remove it after CBUS CTS etc. */
+//	    	mhl_tx_write_reg(hw_context, REG_DISC_CTRL3, BIT_DC3_DEFAULT);
 
 		}
 
 		if (hw_context->chip_device_id == DEVICE_ID_8558) {
-			
+			/* MHL Auto FIFO Reset */
 			mhl_tx_write_reg(hw_context, REG_PWD_SRST, 0x80);
 		}
 
-		
+		/* enable transcode mode of operation */
 		mhl_tx_write_reg(hw_context, REG_DCTL,
 						 BIT_DCTL_TRANSCODE_OFF |
 						 BIT_DCTL_TLCK_PHASE_INVERTED);
 
-		
+		/* enable CKDT. Interrupt will be enabled once we have parsed EDID */
 		mhl_tx_modify_reg(hw_context, REG_TMDS_CCTRL,
 								BIT_TMDS_CCTRL_CKDT_EN,
 								 BIT_TMDS_CCTRL_CKDT_EN);
 
-		
+		/* set time base for one second to be 60Hz/4*5 + 4*/
 		mhl_tx_write_reg(hw_context
 				, REG_TPI_HDCP_TIMER_1_SEC
 				, 79
 				);
 	}
-	
+	/* setup local DEVCAP and few more CBUS registers. */
 	{
+			/*
+			 * Fill-in DEVCAP device ID values with those read
+			 * from the transmitter.
+			 */
 			dev_cap_values[DEVCAP_OFFSET_DEVICE_ID_L] = 0;
 			dev_cap_values[DEVCAP_OFFSET_DEVICE_ID_H] = 0;
 
-			
+			/* Setup local DEVCAP registers */
 			mhl_tx_write_reg_block(hw_context, DEVCAP_REG(DEV_STATE),
 								   ARRAY_SIZE(dev_cap_values), dev_cap_values);
 
+			/*
+			 * Make sure MDT registers are initialized and the MDT
+			 * transmit/receive are both disabled.
+			 */
 			mhl_tx_write_reg(hw_context, REG_CBUS_MDT_XMIT_TIMEOUT, 100);
 
-			
+			/* Clear transmit FIFOs and make sure MDT transmit is disabled */
 			mhl_tx_write_reg(hw_context, REG_CBUS_MDT_XMIT_CONTROL, 0x03);
 
-			
+			/* Disable MDT transmit preemptive handshake option */
 			mhl_tx_write_reg(hw_context, REG_CBUS_MDT_XFIFO_STAT, 0x00);
 
 			mhl_tx_write_reg(hw_context, REG_CBUS_MDT_RCV_TIMEOUT, 100);
 
-			
+			/* 2013-03-01 bugzilla 27180 */
 			mhl_tx_write_reg(hw_context, REG_CBUS_LINK_XMIT_BIT_TIME, 0x1D);
 	}
-#ifdef ENABLE_GEN2 
+#ifdef ENABLE_GEN2 //(
+	/*
+		Disable h/w automation of WRITE_BURST.
+		3D packets are handled using legacy WRITE_BURST method.
+	*/
 	disable_gen2_write_burst(hw_context);
-#endif 
+#endif //)
 	hw_context->ready_for_mdt = false;
 
 	return ret_val;
@@ -1505,11 +1650,11 @@ static int init_regs(struct drv_hw_context *hw_context)
 
 void si_mhl_tx_drv_disable_video_path(struct drv_hw_context *hw_context)
 {
-	
+	/* If video was already being output */
 	if(hw_context->video_ready && (0 == (AV_MUTE_MUTED &
 			 mhl_tx_read_reg(hw_context, TPI_SYSTEM_CONTROL_DATA_REG)))) {
 
-		
+		/* stop hdcp and video and remember */
 		stop_video(hw_context);
 		hw_context->video_path = 0;
 	}
@@ -1520,9 +1665,9 @@ void si_mhl_tx_drv_enable_video_path(struct drv_hw_context *hw_context)
 	uint8_t	mask = (TMDS_OUTPUT_CONTROL_MASK | AV_MUTE_MASK);
 	uint8_t	reg;
 
-	
+	/* if a path_en = 0 had stopped the video, restart it unless done already. */
 	if(hw_context->video_ready && (0 == hw_context->video_path)) {
-		
+		/* remember ds has enabled our path */
 		hw_context->video_path = 1;
 
 		reg  = mhl_tx_read_reg(hw_context, TPI_SYSTEM_CONTROL_DATA_REG);
@@ -1536,12 +1681,12 @@ void si_mhl_tx_drv_enable_video_path(struct drv_hw_context *hw_context)
 void si_mhl_tx_drv_content_off(struct drv_hw_context *hw_context)
 {
 	MHL_TX_DBG_INFO(dev_context, "RAP CONTENT_OFF video %sready\n",hw_context->video_ready?"":"NOT ");
-	
+	/* If video was already being output */
 	if(hw_context->video_ready && (0 == (AV_MUTE_MUTED &
 			 mhl_tx_read_reg(hw_context, TPI_SYSTEM_CONTROL_DATA_REG)))) {
 
 		MHL_TX_DBG_INFO(dev_context, "RAP CONTENT_OFF\n");
-		
+		/* stop hdcp and video and remember */
 		stop_video(hw_context);
 	}
 }
@@ -1551,7 +1696,7 @@ void si_mhl_tx_drv_content_on(struct drv_hw_context *hw_context)
 	uint8_t	mask = (TMDS_OUTPUT_CONTROL_MASK | AV_MUTE_MASK);
 	uint8_t	reg;
 
-	
+	/* if a path_en = 0 had stopped the video, restart it unless done already. */
 	if(hw_context->video_ready) {
 
 		reg  = mhl_tx_read_reg(hw_context, TPI_SYSTEM_CONTROL_DATA_REG);
@@ -1566,7 +1711,7 @@ static void ensure_avif_part2(struct drv_hw_context *hw_context)
 {
 	uint8_t	new_ckdt;
 
-	 
+	 /*Disable TMDS output power because input is unstable. */
 	mhl_tx_modify_reg(hw_context, REG_TMDS_CCTRL, BIT_TMDS_CCTRL_TMDS_OE, 0);
 
 	if (1 == hw_context->ckdt_done) {
@@ -1578,13 +1723,13 @@ static void ensure_avif_part2(struct drv_hw_context *hw_context)
 	new_ckdt &= BIT_TMDS_CSTAT_P3_PDO_MASK;
 
 	if (BIT_TMDS_CSTAT_P3_PDO_CLOCK_DETECTED == new_ckdt) {
-		
+		/* Mask out CKDT interrupt */
 		mhl_tx_modify_reg(hw_context, REG_INTR5_MASK,
 						  BIT_INTR5_CKDT_CHANGE, 0);
 
 	}
 }
-#ifdef	EXAMPLE_ONLY	
+#ifdef	EXAMPLE_ONLY	// These functions are not called from anywhere.
 static	void	mute_video(struct drv_hw_context *hw_context)
 {
 	MHL_TX_DBG_INFO(hw_context, "AV muted\n");
@@ -1592,7 +1737,7 @@ static	void	mute_video(struct drv_hw_context *hw_context)
 						AV_MUTE_MASK,
 						AV_MUTE_MUTED);
 }
-#endif	
+#endif	//	EXAMPLE_ONLY
 
 static void unmute_video(struct drv_hw_context *hw_context)
 {
@@ -1603,17 +1748,26 @@ static void unmute_video(struct drv_hw_context *hw_context)
 	} else {
 		mhl_tx_write_reg(hw_context, TPI_SYSTEM_CONTROL_DATA_REG, TMDS_OUTPUT_MODE_DVI);
 	}
-	
+	/* Now we can entertain PATH_EN */
 	hw_context->video_ready = 1;
 }
 
+/*
+	Sequence of operations in this function is important.
+	1. Turn off HDCP interrupt
+	2. Turn of TMDS output
+	3. Turn off HDCP engine/encryption
+	4. Clear any leftover HDCP interrupt
+*/
 static void stop_video(struct drv_hw_context *hw_context)
 {
 	MHL_TX_DBG_INFO(hw_context, "stop video\n");
 
-	
+	/* Turn off HDCP interrupt */
 	enable_intr(hw_context, INTR_HDCP, (0x00));
 
+	/* We must maintain the output bit (bit 0) to allow just one bit change
+	 * later when BKSV read is triggered. */
 	if(si_edid_sink_is_hdmi(hw_context->intr_info->edid_parser_context)) {
 		mhl_tx_write_reg(hw_context, TPI_SYSTEM_CONTROL_DATA_REG
 				, TMDS_OUTPUT_CONTROL_POWER_DOWN
@@ -1627,10 +1781,10 @@ static void stop_video(struct drv_hw_context *hw_context)
 				| TMDS_OUTPUT_MODE_DVI
 				);
 	}
-	
+	/* stop hdcp engine */
 	mhl_tx_write_reg(hw_context, TPI_HDCP_CONTROL_DATA_REG, 0);
 
-	
+	/* clear any leftover hdcp interrupt */
 	mhl_tx_write_reg(hw_context, g_intr_tbl[INTR_HDCP].stat_page, g_intr_tbl[INTR_HDCP].stat_offset, 0xff);
 }
 
@@ -1647,11 +1801,11 @@ static void	start_hdcp(struct drv_hw_context *hw_context)
 		return;
 	}
 
-	
-	
+	/* First stop hdcp and video */
+	//stop_video(hw_context);
 
-#if 0 
-	
+#if 0 //(
+	/* Came here too often, pause a bit. */
 	if( (hdcp_bksv_err_count > HDCP_ERROR_THRESHOLD) ||
 			(hdcp_link_err_count > HDCP_ERROR_THRESHOLD) ||
 			(hdcp_reneg_err_count > HDCP_ERROR_THRESHOLD) ||
@@ -1661,16 +1815,24 @@ static void	start_hdcp(struct drv_hw_context *hw_context)
 				hdcp_bksv_err_count, hdcp_reneg_err_count, hdcp_link_err_count, hdcp_suspend_err_count);
 		hdcp_bksv_err_count = hdcp_reneg_err_count = hdcp_link_err_count = hdcp_suspend_err_count = 0;
 
-		
+		//msleep(10 * 1000);
 
+		/*
+		 * Check CKDT and SCDT.
+		 * It is possible that lack of clock instability is why hdcp is not
+		 * succeeding after repeated retries
+		 *
+		 * Do not continue this anymore. Returning without restarting HDCP
+		 * ensures this thread is completely killed.
+		 */
 		return;
 	}
-#endif 
-	
+#endif //)
+	/* Ensure we get HDCP interrupts now onwards. Clear interrupt first. */
 	mhl_tx_write_reg(hw_context, g_intr_tbl[INTR_HDCP].stat_page, g_intr_tbl[INTR_HDCP].stat_offset, 0xff);
 
 	if(get_cbus_connection_status(hw_context)) {
-		
+		/* Enable HDCP interrupt */
 		enable_intr(hw_context, INTR_HDCP,
 				 (  BIT_TPI_INTR_ST0_HDCP_AUTH_STATUS_CHANGE_EVENT
 			  	  | BIT_TPI_INTR_ST0_HDCP_SECURITY_CHANGE_EVENT
@@ -1678,12 +1840,21 @@ static void	start_hdcp(struct drv_hw_context *hw_context)
 			  	  | BIT_TPI_INTR_ST0_BKSV_ERR
 				 ));
 		msleep(250);
+		/*
+		 * Chip requires only bit 4 to change for BKSV read
+		 * No other bit should change.
+		 */
 		mhl_tx_modify_reg(hw_context, TPI_SYSTEM_CONTROL_DATA_REG,
 					TMDS_OUTPUT_CONTROL_MASK,
 					TMDS_OUTPUT_CONTROL_ACTIVE);
 	}
 }
 
+/*
+ * start_video
+ *
+ *
+ */
 
 #ifdef CONFIG_MHL_MONITOR_WORKAROUND
 int start_video(struct drv_hw_context *hw_context, void *edid_parser_context)
@@ -1693,8 +1864,17 @@ static	int start_video(struct drv_hw_context *hw_context, void *edid_parser_cont
 {
 	struct mhl_dev_context	*dev_context;
 	dev_context = get_mhl_device_context(hw_context);
+	/*
+	 * stop hdcp and video
+	 * this kills any hdcp thread going on already
+	 */
 	stop_video(hw_context);
 
+	/*
+	 * if path has been disabled by PATH_EN = 0 return with error;
+	 * When enabled, this function will be called again.
+	 * if downstream connection has been lost (CLR_HPD), return with error.
+	 */
 	if ((0 == hw_context->video_path)
 			|| (0 == get_cbus_connection_status(hw_context))
 			|| (false == dev_context->misc_flags.flags.rap_content_on)) {
@@ -1711,12 +1891,19 @@ static	int start_video(struct drv_hw_context *hw_context, void *edid_parser_cont
 		MHL_TX_DBG_ERR(,"waiting for DDC bypass disable\n");
 		return false;
 	}
+	/*
+	 * For DVI, output video w/o infoframe; No video settings are changed.
+	 */
 	if (si_edid_sink_is_hdmi(hw_context->intr_info->edid_parser_context)) {
+		/*
+		 * setup registers for packed pixel, 3D, colors and AVIF
+		 * using incoming info frames. VSIF sent out by the h/w.
+		 */
 		mhl_tx_write_reg(hw_context, REG_RX_HDMI_CTRL2
 				, hw_context->rx_hdmi_ctrl2_defval = REG_RX_HDMI_CTRL2_DEFVAL_HDMI
 				| BIT_RX_HDMI_CTRL2_VSI_MON_SEL_AVI_INFOFRAME);
 		if(false == set_hdmi_params(dev_context)) {
-			
+			/* Do not disrupt an ongoing video for bad incoming infoframes */
 			return false;
 		}
 	} else {
@@ -1732,11 +1919,29 @@ static	int start_video(struct drv_hw_context *hw_context, void *edid_parser_cont
 	MHL_TX_DBG_INFO(hw_context,"Start HDCP Authentication\n");
 
 	start_hdcp(hw_context);
+	/*
+	 * TODO: Check if the following block has to be performed again at
+	 * HDCP restart.
+	 *
+	 * Start sending out AVIF now.
+	 * Also ensure other appropriate frames are being forwarded or dropped.
+	*/
 	if (si_edid_sink_is_hdmi(hw_context->intr_info->edid_parser_context)) {
+		/*
+		 * Send infoframe out
+		 */
 		mhl_tx_write_reg_block(hw_context, REG_TPI_AVI_CHSUM,
 							   sizeof(hw_context->outgoingAviPayLoad.ifData),
 							   (uint8_t*)&hw_context->outgoingAviPayLoad.ifData);
+		/*
+		 * Change packet filters to drop AIF and GCP.
+		 * TODO: Describe this in the PR appropriately.
+		*/
 		mhl_tx_write_reg(hw_context, REG_PKT_FILTER_0, 0xA5);
+		/*
+		 * enable HDMI to MHL VSIF conversion ( clear bit 7)
+		 * and drop generic infoframes  ( set bit 1)
+		 */
 		mhl_tx_write_reg(hw_context, REG_PKT_FILTER_1,0x02);
 
 	}
@@ -1771,18 +1976,28 @@ static int hdcp_isr(struct drv_hw_context *hw_context, uint8_t tpi_int_status)
 				}
 			}
 
+			/*
+				TODO: Document this as SWWA 27396.
+				Wait for bottom five bits of debug 6 register to change before
+				reading query_data (0x29) register.
+			*/
 			do{
 				temp = mhl_tx_read_reg(hw_context,REG_TPI_HW_DBG6) & 0x1F;
 			} while (temp == 2);
 			if (temp < 2)
-				return 0; 
+				return 0; /* TPI hdcp state machine has restarted, just wait for another BKSV_DONE */
 			query_data = mhl_tx_read_reg(hw_context, TPI_HDCP_QUERY_DATA_REG);
 
+			/*
+				If the downstream device is a repeater, enforce a 5 second delay
+				to pass HDCP CTS 1B-03.
+				TODO: Describe this in the PR.
+			*/
 			if (HDCP_REPEATER_YES== (HDCP_REPEATER_MASK & query_data)){
 				msleep(HDCP_RPTR_CTS_DELAY_MS);
 			}
 
-			
+			// Start authentication here
 			mhl_tx_write_reg(hw_context, TPI_HDCP_CONTROL_DATA_REG,
 					  BIT_TPI_HDCP_CONTROL_DATA_COPP_PROTLEVEL_MAX
 					| BIT_TPI_HDCP_CONTROL_DATA_DOUBLE_RI_CHECK_ENABLE);
@@ -1810,13 +2025,13 @@ static int hdcp_isr(struct drv_hw_context *hw_context, uint8_t tpi_int_status)
 					, mhl_tx_read_reg(hw_context,REG_TPI_BSTATUS2)
 					);
 			hdcp_reneg_err_count++;
-			
+			/* Disabling TMDS output here will disturb the clock */
 			mhl_tx_modify_reg(hw_context
 					, TPI_SYSTEM_CONTROL_DATA_REG
 					, AV_MUTE_MASK
 					, AV_MUTE_MUTED);
 
-			
+			/* send TPI hardware to HDCP_Prep state */
 			mhl_tx_write_reg(hw_context, TPI_HDCP_CONTROL_DATA_REG, 0);
 			break;
 		case LINK_STATUS_LINK_SUSPENDED:
@@ -1824,7 +2039,7 @@ static int hdcp_isr(struct drv_hw_context *hw_context, uint8_t tpi_int_status)
 			start_hdcp(hw_context);
 			break;
 		}
-	} 
+	} /* Check if HDCP state has changed: */
 	else if (BIT_TPI_INTR_ST0_HDCP_AUTH_STATUS_CHANGE_EVENT & tpi_int_status) {
 		uint8_t new_link_prot_level;
 
@@ -1853,7 +2068,7 @@ static int int_8_isr(struct drv_hw_context *hw_context, uint8_t intr_8_status)
 	vendor_specific_info_frame_t	vsif;
 	avi_info_frame_t		avif;
 
-	
+	/* Resolution change interrupt (NEW_AVIF or NEW_VSIF) */
 	if (BIT_INTR8_CEA_NEW_VSI & intr_8_status) {
 			MHL_TX_DBG_ERR(hw_context, "got NEW_VSI\n");
 
@@ -1871,10 +2086,17 @@ static int int_8_isr(struct drv_hw_context *hw_context, uint8_t intr_8_status)
 	if (BIT_INTR8_CEA_NEW_AVI & intr_8_status) {
 
 			MHL_TX_DBG_ERR(hw_context, "got NEW_AVIF\n");
+			/*
+			 * If this is the first time after ckdt,
+			 * we need to restore tmds_oe registers
+			 */
 			if (2 != hw_context->ckdt_done) {
 				ensure_avif_part2(hw_context);
 				hw_context->ckdt_done = 2;
 			}
+			/*
+			 * Read AVIF packet
+			 */
 			mhl_tx_write_reg(hw_context, REG_RX_HDMI_CTRL2
 					, hw_context->rx_hdmi_ctrl2_defval
 					| BIT_RX_HDMI_CTRL2_VSI_MON_SEL_AVI_INFOFRAME);
@@ -1915,7 +2137,7 @@ static int int_9_isr(struct drv_hw_context *hw_context, uint8_t int_9_status)
 			ddcStatus = mhl_tx_read_reg(hw_context,REG_DDC_STATUS);
 			if (BIT_DDC_STATUS_DDC_NO_ACK & ddcStatus) {
 
-				
+				/* Restart EDID read from block 0 */
 				if (!si_mhl_tx_drv_issue_edid_read_request(hw_context,
 					hw_context->current_edid_request_block=0)) {
 					hw_context->intr_info->flags |= DRV_INTR_FLAG_MSC_DONE;
@@ -1931,29 +2153,29 @@ static int int_9_isr(struct drv_hw_context *hw_context, uint8_t int_9_status)
 				if (num_extensions < 0)	{
 					MHL_TX_DBG_ERR(hw_context,"edid problem:%d\n",num_extensions);
 					if (ne_NO_HPD == num_extensions) {
-						
+						// no HPD, so start over
 						hw_context->intr_info->flags |= DRV_INTR_FLAG_MSC_DONE;
 						hw_context->intr_info->msc_done_data =1;
 					} else {
 						si_mhl_tx_drv_reset_ddc_fifo(hw_context);
-						
+						/* Restart EDID read from block 0 */
 						if (!si_mhl_tx_drv_issue_edid_read_request(hw_context,
 								hw_context->current_edid_request_block=0)) {
-							
+							// Notify the component layer with error
 							hw_context->intr_info->flags |= DRV_INTR_FLAG_MSC_DONE;
 							hw_context->intr_info->msc_done_data =1;
 						}
 					}
 				} else if (hw_context->current_edid_request_block < num_extensions) {
-					
+					/* EDID read next block */
 					if (!si_mhl_tx_drv_issue_edid_read_request(hw_context,
 						++hw_context->current_edid_request_block)) {
-						
+						/* Notify the MHL module with error */
 						hw_context->intr_info->flags |= DRV_INTR_FLAG_MSC_DONE;
 						hw_context->intr_info->msc_done_data =1;
 					}
 				} else {
-					
+					/* Inform MHL module of EDID read MSC command completion */
 					hw_context->intr_info->flags |= DRV_INTR_FLAG_MSC_DONE;
 					hw_context->intr_info->msc_done_data =0;
 				}
@@ -1962,6 +2184,12 @@ static int int_9_isr(struct drv_hw_context *hw_context, uint8_t int_9_status)
 
 		if (BIT_INTR9_EDID_ERROR & int_9_status) {
 			uint8_t cbus_status;
+			/*
+			 * un-comment next two lines for showing TPI debug
+			 * registers when readblock is done.
+			uint8_t debugStatus[7];
+			mhl_tx_read_reg_block(REG_TPI_HW_DBG1,sizeof(debugStatus), debugStatus);
+			 */
 			cbus_status = mhl_tx_read_reg(hw_context, REG_CBUS_STATUS);
 
 			MHL_TX_DBG_INFO(hw_context, "EDID read error, retrying\n");
@@ -1970,15 +2198,15 @@ static int int_9_isr(struct drv_hw_context *hw_context, uint8_t int_9_status)
 			hw_context->current_edid_request_block = 0;
 			si_mhl_tx_drv_reset_ddc_fifo(hw_context);
 			if (BIT_CBUS_HPD & cbus_status) {
-				
+				/* Restart EDID read from block 0 */
 				if (!si_mhl_tx_drv_issue_edid_read_request(hw_context,
 						hw_context->current_edid_request_block=0)) {
-					
+					/* Notify the MHL module of error */
 					hw_context->intr_info->flags |= DRV_INTR_FLAG_MSC_DONE;
 					hw_context->intr_info->msc_done_data =1;
 				}
 			} else {
-				
+				/* Notify the MHL module with error */
 				hw_context->intr_info->flags |= DRV_INTR_FLAG_MSC_DONE;
 				hw_context->intr_info->msc_done_data =1;
 			}
@@ -1992,14 +2220,14 @@ void si_mhl_tx_read_devcap_fifo(struct drv_hw_context *hw_context,
 {
 	MHL_TX_DBG_INFO(hw_context,"called\n");
 
-	
+	/* Enable EDID interrupt */
 	enable_intr(hw_context, INTR_EDID,
 				   ( BIT_INTR9_DEVCAP_DONE_MASK
 				    | BIT_INTR9_EDID_DONE_MASK
 				    | BIT_INTR9_EDID_ERROR
 				   ));
 
-	
+	/* choose devcap instead of EDID to appear at the FIFO */
 	mhl_tx_write_reg(hw_context
 			, REG_EDID_CTRL
 			, BIT_EDID_CTRL_EDID_PRIME_VALID_DISABLE
@@ -2009,7 +2237,7 @@ void si_mhl_tx_read_devcap_fifo(struct drv_hw_context *hw_context,
 			);
 	mhl_tx_write_reg(hw_context, REG_EDID_FIFO_ADDR, 0);
 
-	
+	/* Retrieve the DEVCAP register values from the FIFO */
 	mhl_tx_read_reg_block(hw_context, REG_EDID_FIFO_RD_DATA,
 						  DEVCAP_SIZE, dev_cap_buf->devcap_cache);
 
@@ -2028,7 +2256,24 @@ static int mhl_cbus_err_isr(struct drv_hw_context *hw_context, uint8_t cbus_err_
 	uint8_t ddc_abort_reason = 0;
 	uint8_t msc_abort_reason = 0;
 
+	/*
+	 * Three possible errors could be asserted.
+	 * 94[2] = DDC_ABORT
+	 * 94[3] = ABORT while receiving a command - MSC_RCV_ERROR
+	 * 			The ABORT reasons are in 9A
+	 * 94[6] = ABORT while sending a command - MSC_SEND_ERROR
+	 * 			The ABORT reasons are in 9C
+	 */
 	if (cbus_err_int & BIT_CBUS_DDC_ABRT) {
+		/*
+		 * For DDC ABORTs, options are
+		 * 1. reset DDC block. This will hamper a broken HDCP or EDID.
+		 * 2. if error persists, reset the chip. In any case video is not
+		 *    working. So it should not cause blinks.
+		 * In either case, call an API to let SoC know what happened.
+		 *
+		 * Only option 1 has been implemented here.
+		 */
 
 		ddc_abort_reason = mhl_tx_read_reg(hw_context, REG_CBUS_DDC_ABORT_INT);
 
@@ -2048,6 +2293,11 @@ static int mhl_cbus_err_isr(struct drv_hw_context *hw_context, uint8_t cbus_err_
 		}
 	}
 	if (cbus_err_int & BIT_CBUS_MSC_ABORT_RCVD) {
+		/*
+		 * For MSC Receive time ABORTs
+		 * - Defer submission of new commands by 2 seconds per MHL specs
+		 * - This is not even worth reporting to SoC. Action is in the hands of peer.
+		 */
 		hw_context->intr_info->flags |= DRV_INTR_FLAG_CBUS_ABORT;
 
 		msc_abort_reason = mhl_tx_read_reg(hw_context, REG_MSC_RCV_ERROR);
@@ -2058,6 +2308,12 @@ static int mhl_cbus_err_isr(struct drv_hw_context *hw_context, uint8_t cbus_err_
 				msc_abort_count, msc_abort_reason);
 	}
 	if (cbus_err_int & BIT_CBUS_CMD_ABORT) {
+		/*
+		 * 1. Defer submission of new commands by 2 seconds per MHL specs
+		 * 2. For API operations such as RCP/UCP etc., report the situation to
+		 *    SoC and let the decision be there. Internal retries have been already
+		 *    done.
+		 */
 		hw_context->intr_info->flags |= DRV_INTR_FLAG_CBUS_ABORT;
 
 		msc_abort_reason = mhl_tx_read_reg(hw_context, REG_CBUS_MSC_MT_ABORT_INT);
@@ -2067,6 +2323,9 @@ static int mhl_cbus_err_isr(struct drv_hw_context *hw_context, uint8_t cbus_err_
 
 		mhl_tx_write_reg(hw_context,REG_CBUS_MSC_MT_ABORT_INT,msc_abort_reason);
 	}
+	/*
+	 * Print the reason for information
+	 */
 	if (msc_abort_reason) {
 		if (BIT_CBUS_MSC_MT_ABORT_INT_MAX_FAIL & msc_abort_reason) {
 				MHL_TX_DBG_ERR(hw_context, "Retry threshold exceeded\n");
@@ -2087,10 +2346,30 @@ static int mhl_cbus_err_isr(struct drv_hw_context *hw_context, uint8_t cbus_err_
 	return(ret_val);
 }
 
+/*
+ * mhl_cbus_isr
+ *
+ * Only when MHL connection has been established. This is where we have the
+ * first looks on the CBUS incoming commands or returned data bytes for the
+ * previous outgoing command.
+ *
+ * It simply stores the event and allows application to pick up the event
+ * and respond at leisure.
+ *
+ *	return values:
+ *		0	- MHL interrupts (all of them) have been cleared
+ *				- calling routine should exit
+ *		1	- MHL interrupts (at least one of them) may not have been cleared
+ *				- calling routine should proceed with interrupt processing.
+ */
 static int mhl_cbus_isr(struct drv_hw_context *hw_context, uint8_t cbus_int)
 {
 
 	if (cbus_int & ~BIT_CBUS_HPD_RCVD) {
+		/* bugzilla 27396
+		   Logic to detect missed HPD interrupt.
+		   Do not clear BIT_CBUS_HPD_RCVD yet.
+		   */
 		mhl_tx_write_reg(hw_context, REG_CBUS_INT_0,cbus_int & ~BIT_CBUS_HPD_RCVD);
 	}
 
@@ -2098,18 +2377,25 @@ static int mhl_cbus_isr(struct drv_hw_context *hw_context, uint8_t cbus_int)
 		uint8_t cbus_status;
 		uint8_t status;
 
-		
+		/* Check if a SET_HPD came from the downstream device. */
 		cbus_status = mhl_tx_read_reg(hw_context, REG_CBUS_STATUS);
 		status = cbus_status & BIT_CBUS_HPD;
 
 		if (BIT_CBUS_HPD & (hw_context->cbus_status ^ cbus_status)) {
 
+			/* bugzilla 27396
+			   No HPD interrupt has been missed yet.
+			   Clear BIT_CBUS_HPD_RCVD.
+			   */
 			mhl_tx_write_reg(hw_context, REG_CBUS_INT_0, BIT_CBUS_HPD_RCVD);
 			MHL_TX_DBG_INFO(hw_context, "HPD change\n");
 		} else {
 			MHL_TX_DBG_ERR(hw_context, "missed HPD change\n");
 
-			
+			/* leave the BIT_CBUS_HPD_RCVD interrupt uncleared, so that
+			 * 	we get another interrupt
+			 */
+			/* whatever we missed, it's the inverse of what we got */
 			status ^= BIT_CBUS_HPD;
 			cbus_status ^= BIT_CBUS_HPD;
 		}
@@ -2120,7 +2406,7 @@ static int mhl_cbus_isr(struct drv_hw_context *hw_context, uint8_t cbus_int)
 		hw_context->intr_info->hpd_status = status;
 
 		if (0 == get_config(hw_context, TRANSCODE_MODE)) {
-			
+			// non-transcode mode
 			if (0 == status) {
 				struct mhl_dev_context	*dev_context;
 				dev_context = get_mhl_device_context(hw_context);
@@ -2133,19 +2419,28 @@ static int mhl_cbus_isr(struct drv_hw_context *hw_context, uint8_t cbus_int)
 					mhl_tx_write_reg(hw_context, REG_POWER_CTRL, 0x55);
 				}
 				hw_context->current_edid_request_block = 0;
-#ifdef ENABLE_GEN2 
+#ifdef ENABLE_GEN2 //(
+				/*
+				   At DS HPD low:
+				   Disable h/w automation of WRITE_BURST.
+				   3D packets are handled using legacy WRITE_BURST method.
+				   */
 				disable_gen2_write_burst(hw_context);
-#endif 
+#endif //)
 				hw_context->ready_for_mdt = false;
 
-				
+				/* default values for video */
 				hw_context->video_ready = false;
 				hw_context->video_path = 1;
+				/*
+				 * This cannot wait for the upper layer to notice DRV_INTR_FLAG_HPD_CHANGE.
+				 * stop_video relies on the result.
+				 */
 				si_edid_reset(dev_context->edid_parser_context);
 			} else {
 				MHL_TX_DBG_INFO(hw_context, "\n\nGot SET_HPD\n\n");
 			}
-			
+			/* if DS sent CLR_HPD or SET_HPD, ensure video is not there */
 			stop_video(hw_context);
 		}
 		hw_context->cbus_status = cbus_status;
@@ -2158,10 +2453,10 @@ static int mhl_cbus_isr(struct drv_hw_context *hw_context, uint8_t cbus_int)
 		hw_context->intr_info->msc_done_data =
 			mhl_tx_read_reg(hw_context, REG_CBUS_PRI_RD_DATA_1ST);
 
-#ifdef ENABLE_GEN2 
-		
+#ifdef ENABLE_GEN2 //(
+		/* Enable h/w automation of WRITE_BURST */
 		enable_gen2_write_burst(hw_context);
-#endif 
+#endif //)
 	}
 	if (BIT_CBUS_MSC_MT_DONE_NACK & cbus_int){
 		MHL_TX_DBG_ERR(hw_context,"MSC_MT_DONE_NACK\n");
@@ -2170,7 +2465,7 @@ static int mhl_cbus_isr(struct drv_hw_context *hw_context, uint8_t cbus_int)
 
 	if (BIT_CBUS_MSC_MR_WRITE_STAT & cbus_int) {
 
-		
+		/* read status bytes */
 		mhl_tx_read_reg_block(hw_context, REG_CBUS_WRITE_STAT_0,
 				ARRAY_SIZE(hw_context->intr_info->write_stat),
 				hw_context->intr_info->write_stat);
@@ -2178,17 +2473,25 @@ static int mhl_cbus_isr(struct drv_hw_context *hw_context, uint8_t cbus_int)
 		if(MHL_STATUS_DCAP_RDY & hw_context->intr_info->write_stat[0]) {
 			MHL_TX_DBG_INFO(hw_context, "\n\ngot DCAP_RDY\n\n");
 
-			
+			/* Enable EDID interrupt */
 			enable_intr(hw_context, INTR_EDID,
 					( BIT_INTR9_DEVCAP_DONE_MASK
 					  | BIT_INTR9_EDID_DONE_MASK
 					  | BIT_INTR9_EDID_ERROR
 					));
 		}
+		/*
+		 * Save received write_stat info for later
+		 * post interrupt processing
+		 */
 		hw_context->intr_info->flags |= DRV_INTR_FLAG_WRITE_STAT;
 	}
 
 	if ((BIT_CBUS_MSC_MR_MSC_MSG & cbus_int)) {
+		/*
+		 * Save received MSC message info for later
+		 * post interrupt processing
+		 */
 		hw_context->intr_info->flags |= DRV_INTR_FLAG_MSC_RECVD;
 		mhl_tx_read_reg_block(hw_context,
 				REG_CBUS_MSC_MR_MSC_MSG_RCVD_1ST_DATA,
@@ -2200,8 +2503,16 @@ static int mhl_cbus_isr(struct drv_hw_context *hw_context, uint8_t cbus_int)
 				hw_context->intr_info->msc_msg[1]);
 	}
 
+	/*
+	 * don't do anything for a scratch pad write received interrupt.
+	 * instead wait for the DSCR_CHG interrupt
+	 */
 	if(BIT_CBUS_MSC_MR_SET_INT & cbus_int) {
 		MHL_TX_DBG_INFO(hw_context, "MHL INTR Received\n");
+		/*
+		 * Save received SET INT message info for later
+		 * post interrupt processing
+		 */
 		hw_context->intr_info->flags |= DRV_INTR_FLAG_SET_INT;
 		mhl_tx_read_reg_block(hw_context,
 				REG_CBUS_SET_INT_0,
@@ -2216,6 +2527,10 @@ static int mhl_cbus_isr(struct drv_hw_context *hw_context, uint8_t cbus_int)
 		if (MHL_INT_EDID_CHG & hw_context->intr_info->int_msg[1]) {
 			MHL_TX_DBG_INFO(hw_context, "\n\ngot EDID_CHG\n\n");
 			if (get_config(hw_context, TRANSCODE_MODE)) {
+				/*
+				 * Force upstream source to read the EDID again
+				 * by appropriate toggling of HDMI HPD
+				 */
 				drive_hpd_low(hw_context);
 				msleep(110);
 				drive_hpd_high(hw_context);
@@ -2223,18 +2538,18 @@ static int mhl_cbus_isr(struct drv_hw_context *hw_context, uint8_t cbus_int)
 			} else {
 				int reg_val;
 
-				
+				/* clear this bit so that BIT_TPI_INFO_EN will get cleared by the h/w */
 				mhl_tx_modify_reg(hw_context,REG_TPI_INFO_FSEL
 						,BIT_TPI_INFO_RPT
 						,0
 						);
 
-				
+				/* MHL module will re-read EDID */
 				drive_hpd_low(hw_context);
 
 				stop_video(hw_context);
 
-				
+				/* prevent HDCP interrupts from coming in */
 				reg_val = mhl_tx_read_reg(hw_context, REG_TPI_SEL);
 				MHL_TX_DBG_INFO(hw_context, "REG_TPI_SEL:%02x\n",
 						reg_val);
@@ -2242,13 +2557,17 @@ static int mhl_cbus_isr(struct drv_hw_context *hw_context, uint8_t cbus_int)
 				reg_val |= BIT_TPI_SEL_SW_TPI_EN_NON_HW_TPI;
 				mhl_tx_write_reg(hw_context, REG_TPI_SEL, reg_val);
 
-				
+				/* SetTPIMode */
 				MHL_TX_DBG_INFO(hw_context, "REG_TPI_SEL:%02x\n",
 						reg_val);
 				reg_val &= ~BIT_TPI_SEL_SW_TPI_EN_MASK;
 				reg_val |= BIT_TPI_SEL_SW_TPI_EN_HW_TPI;
 				mhl_tx_write_reg(hw_context, REG_TPI_SEL, reg_val);
 
+				/*
+				 * Clear HDCP interrupt - due to TPI enable, we may get one.
+				 * TODO: Document this in the PR.
+				 */
 				mhl_tx_write_reg(hw_context, g_intr_tbl[INTR_HDCP].stat_page,
 						g_intr_tbl[INTR_HDCP].stat_offset,
 						0xff);
@@ -2276,10 +2595,10 @@ static int int_5_isr(struct drv_hw_context *hw_context, uint8_t int_5_status)
 	int	ret_val = 0;
 	uint8_t temp;
 
-	
+	/* Look at the CKDT status if either is asserted */
 	if( int_5_status & (BIT_INTR5_SCDT_CHANGE | BIT_INTR5_CKDT_CHANGE) ) {
 
-		
+		/* TODO: Document this in the PR */
 		ret_val = int_5_status & (BIT_INTR5_SCDT_CHANGE | BIT_INTR5_CKDT_CHANGE);
 		mhl_tx_write_reg(hw_context,REG_INTR5, ret_val);
 		temp = mhl_tx_read_reg(hw_context, REG_TMDS_CSTAT_P3);
@@ -2290,7 +2609,7 @@ static int int_5_isr(struct drv_hw_context *hw_context, uint8_t int_5_status)
 
 			MHL_TX_DBG_INFO(hw_context, "\n\ngot CKDT HIGH\n");
 			if (0 == hw_context->ckdt_done) {
-				
+				/* Re-read clock detect */
 				new_ckdt = mhl_tx_read_reg(hw_context, REG_TMDS_CSTAT_P3);
 				new_ckdt &= BIT_TMDS_CSTAT_P3_PDO_MASK;
 
@@ -2300,15 +2619,19 @@ static int int_5_isr(struct drv_hw_context *hw_context, uint8_t int_5_status)
 					hw_context->saved_reg_mhltx_ctl2 =
 							mhl_tx_read_reg(hw_context, REG_MHLTX_CTL2);
 
-					
+					/* Zero out bits [5:0] */
 					mhl_tx_write_reg(hw_context, REG_MHLTX_CTL2,
 							hw_context->saved_reg_mhltx_ctl2 &
 								~BIT_MHL_TX_CTL2_TX_OE_MASK);
+					/*
+					 * Enable TMDS output power (keep muted) to work
+					 * around infoframe interrupt issue.
+					 */
 					mhl_tx_modify_reg(hw_context, REG_TMDS_CCTRL,
 								BIT_TMDS_CCTRL_TMDS_OE,
 								BIT_TMDS_CCTRL_TMDS_OE);
 
-					
+					/* Do this again to be sure */
 					mhl_tx_modify_reg(hw_context, REG_MHLTX_CTL2,
 								BIT_MHL_TX_CTL2_TX_OE_MASK, 0);
 
@@ -2319,7 +2642,7 @@ static int int_5_isr(struct drv_hw_context *hw_context, uint8_t int_5_status)
 			MHL_TX_DBG_INFO(hw_context, "\n\ngot CKDT LOW\n");
 		}
 	}
-	
+	/* Check SCDT status now */
 	if (int_5_status & BIT_INTR5_SCDT_CHANGE) {
 		uint8_t temp;
 		temp = mhl_tx_read_reg(hw_context, REG_TMDS_CSTAT_P3);
@@ -2328,27 +2651,42 @@ static int int_5_isr(struct drv_hw_context *hw_context, uint8_t int_5_status)
 			MHL_TX_DBG_ERR(hw_context, "got SCDT HIGH\n");
 
 			if(si_edid_sink_is_hdmi(hw_context->intr_info->edid_parser_context)) {
+				/*
+				 * This workaround ensures NEW_AVI interrupt when AVI does not change
+				 * but due to downstream HDMI or MHL hot plug, we toggle upstream HPD
+				 * and expect a new AVI.
+				 */
 				msleep(25);
 				bch_force_avif(hw_context);
 				{
 					int temp;
 					int temp2 = mhl_tx_read_reg(hw_context, REG_CBUS_STATUS);
 
-					
+					// TODO: Need to document this delay and workaround.
 					msleep(900);
 					temp2 = mhl_tx_read_reg(hw_context, REG_CBUS_STATUS);
 					temp = mhl_tx_read_reg(hw_context,REG_INTR8)
 						& (BIT_INTR8_CEA_NEW_AVI | BIT_INTR8_CEA_NEW_VSI);
 					if (0 == temp){
 						int dummy;
+						/*
+						 *  simulate the interrupt that we MUST have
+						 */
 						temp =BIT_INTR8_CEA_NEW_AVI | BIT_INTR8_CEA_NEW_VSI;
 						int_8_isr(hw_context,temp);
+						/*
+						 * always discard the real interrupt
+						 */
 						dummy = mhl_tx_read_reg(hw_context,REG_INTR8);
 						mhl_tx_write_reg(hw_context,REG_INTR8,temp);
 					}
 
 				}
 			} else {
+				/*
+				 * output video here for DVI or
+				 * if a VIC is in hand for HDMI
+				 */
 				start_video(hw_context,hw_context->intr_info->edid_parser_context);
 			}
 		} else {
@@ -2369,16 +2707,19 @@ static void audio_disconnect(struct drv_hw_context *hw_context)
 		return;
 	}
 
-	
+	/* Remove audio polling and disable deglitch */
 	mhl_tx_write_reg(hw_context, REG_ASW_TEST_CTRL,
 					 (VAL_ADC_MEAS_3_TIMES | VAL_ADC_RETRY_8_TIMES));
 	hw_context->audio_poll_enabled 	= false;
 	hw_context->accessory_type	= ACCESSORY_DISCONNECTED;
 	mdt_destroy(container_of((void *)hw_context, struct mhl_dev_context, drv_context));
 
-	
+	/* Remove all bits */
 	mhl_tx_write_reg(hw_context, REG_ASW_MANUAL_CTRL, 0x00);
 	mhl_tx_write_reg(hw_context, REG_ASW_TEST_CTRL,(BIT_ID_DEGLITCH_PAUSE_ENABLE| asw_test_ctrl_default_bits));
+	/*
+	 * Necessary to avoid getting false interrupts
+	 */
 	mhl_tx_write_reg(hw_context , REG_ASW_INT1_MASK,
 			BIT_VBUS_CHG_INT | BIT_ID_CHG_INT | BIT_WKUP_HIGH_INT);
 }
@@ -2421,6 +2762,9 @@ static int manual_strap_measurement(struct drv_hw_context *hw_context,int pin)
 	default:
 		return -2;
 	}
+	/* execute a binary search, adding one to
+		mid when the previous value of AON:EB[7] is 1
+	*/
 	high = num_entries-1;
 	low = 0;
 	status = 0;
@@ -2438,7 +2782,7 @@ static int manual_strap_measurement(struct drv_hw_context *hw_context,int pin)
 			high=mid-1;
 		}
 	} while((high>low) || !status);
-	
+	/* clean up */
 	mhl_tx_write_reg(hw_context,REG_RID8,0);
 
 	if (0x80 & status) {
@@ -2457,7 +2801,7 @@ static int manual_strap_measurement(struct drv_hw_context *hw_context,int pin)
 			}
 			break;
 		case BIT_RID8_FW_ADC_SEL_ID:
-			
+			// leave ret_val as is.
 			if (1 == ret_val) {
 				ret_val = BIT_ADC_VALUE_MHL;
 			} else {
@@ -2473,6 +2817,12 @@ static int manual_strap_measurement(struct drv_hw_context *hw_context,int pin)
 }
 #define ALL_THESE_BITS_SET(pattern,status) ((pattern) == ((pattern) & status))
 
+/*
+ * acc_switch_int_0
+ *
+ * Interrupt handler for Accessory Switch Interrupt 0.
+ * This interrupt is not applicable to the Sil-8240.
+ */
 static int acc_switch_int_0(struct drv_hw_context *hw_context, uint8_t reg_asw_int0)
 {
 	if (reg_asw_int0) {
@@ -2483,7 +2833,7 @@ static int acc_switch_int_0(struct drv_hw_context *hw_context, uint8_t reg_asw_i
 		MHL_TX_DBG_INFO(hw_context, "ASW_INT0 = 0x%02X\n", reg_asw_int0);
 
 		if( ALL_THESE_BITS_SET(BIT_RID_MSR_ERR_INT | BIT_RID_MSR_DONE_INT,reg_asw_int0)) {
-			
+			// if MSR_DONE happened together with an error, try it again
 			MHL_TX_DBG_ERR(,"RID Measure Error -> Re-measure\n");
 			mhl_tx_write_reg(hw_context,REG_ASW_INT0, BIT_RID_MSR_ERR_INT | BIT_RID_MSR_DONE_INT);
 			mhl_tx_modify_reg(hw_context,REG_ASW_CTRL,
@@ -2493,8 +2843,18 @@ static int acc_switch_int_0(struct drv_hw_context *hw_context, uint8_t reg_asw_i
 			uint8_t regAdcValue;
 			uint8_t regAdcTable;
 
-			regAdcValue = mhl_tx_read_reg(hw_context, REG_ADC_R_VALUE);	
-			regAdcTable = mhl_tx_read_reg(hw_context, REG_ADC_R_TABLE);	
+			/*
+			 *	1.	Read 345 (tells entries) and 346 (tells table # initialized earlier)
+			 *	2.	Write 341 based on entry
+			 *	3.	POP control if AUDIO. Only when under FW controlled
+			 *		switching. 341[7]
+			 *	4.	Analyze Audio buttons if aud, and perform action.
+			 *		API to AP.
+			 *	5.	If audio accessory is detected, write 0x342[1:0] to start
+			 *		audio switch polling.
+			 */
+			regAdcValue = mhl_tx_read_reg(hw_context, REG_ADC_R_VALUE);	/* 0x345 */
+			regAdcTable = mhl_tx_read_reg(hw_context, REG_ADC_R_TABLE);	/* 0x346 */
 
 
 			if(BIT_ADC_VALUE_VALID & regAdcValue) {
@@ -2502,7 +2862,7 @@ static int acc_switch_int_0(struct drv_hw_context *hw_context, uint8_t reg_asw_i
 				reg_pin_mon = mhl_tx_read_reg(hw_context,REG_PIN_MON);
 				if (regAdcValue & BIT_ADC_VALUE_MHL) {
 
-					
+					/* Power up the chip cores to access registers */
 					power_up(hw_context);
 
 					rid_index = MHL_INDEX;
@@ -2510,21 +2870,38 @@ static int acc_switch_int_0(struct drv_hw_context *hw_context, uint8_t reg_asw_i
 								, REG_ASW_MANUAL_CTRL
 								, rid_table[rid_index].asw_manual_ctrl_value
 								);
-					
+					/* since BIT_PIN_STATUS_VBUS
+						"will take around 546 ms to go high after VBUS is applied
+						and around 0.5 ms to go low after VBUS is removed",
+						we cannot rely on its value here.
+						So, simply enable VBUS, and wait for DEVCAP results or
+						NON_MHL_EST, or cbus disconnect to turn it off.
+					*/
+					/* Call platform function to turn the VBUS on for unpowered dongle */
 					mhl_tx_vbus_control(VBUS_ON);
-					msleep(100); 
+					msleep(100); /* see MHL spec for vbus out to stable */
 
+					/*
+					 * MHL impedance is measured (bit 5), no need to
+					 * access table
+					 */
 					MHL_TX_DBG_INFO(hw_context, "INTR_RID_MSR_DONE. MHL "
 									"Possible: 0x345 = %02X, 0x346 = %02X\n"
 									,regAdcValue ,regAdcTable);
 
+					/*
+					 * enable remaining discovery interrupts
+					 * ignore RGND and LKOUT for 8558
+					 */
 					enable_intr(hw_context, INTR_DISC,
 						  BIT_INTR4_MHL_EST
 						| BIT_INTR4_NON_MHL_EST
+/*						| BIT_INTR4_CBUS_LKOUT		*/
 						| BIT_INTR4_CBUS_DISCONNECT
-						| BIT_INTR4_VBUS_CHG 
+/*						| BIT_INTR4_RGND_DETECTION	*/
+						| BIT_INTR4_VBUS_CHG /* this is required */
 						);
-					
+					/* Enable MSC interrupt to handle initial exchanges */
 					enable_intr(hw_context, INTR_MERR,
 							 ( BIT_CBUS_DDC_ABRT
 							 | BIT_CBUS_MSC_ABORT_RCVD
@@ -2541,6 +2918,9 @@ static int acc_switch_int_0(struct drv_hw_context *hw_context, uint8_t reg_asw_i
 							));
 					set_pin(hw_context,MHL_LED,GPIO_LED_OFF);
 
+					/*
+						The following block ensures USB_LED is ON when strapped to BYPASS mode with override_strap=0.
+					*/
 					if (hw_context->strapping_value != BIT_RET_MON0_BC_CTRL_BYPASS ||
 						hw_context->suspend_strapped_mode == true) {
 						set_pin(hw_context,USB_LED, GPIO_LED_OFF);
@@ -2551,13 +2931,20 @@ static int acc_switch_int_0(struct drv_hw_context *hw_context, uint8_t reg_asw_i
 					set_pin(hw_context,UART_LED, GPIO_LED_OFF);
 					hw_context->accessory_type	= ACCESSORY_MHL;
 
+					/* prevent RID measurement from happening again
+						before we clear BIT_INTR4_NON_MHL_EST
+					*/
 					mhl_tx_write_reg(hw_context, REG_DISC_CTRL8,0x01);
 
-					
+					/* Enable MHL discovery so we are awakened by h/w on discovery result */
 					mhl_tx_write_reg(hw_context, REG_DISC_CTRL1,
 							VAL_DISC_CTRL1_DEFAULT |
 							BIT_DISC_CTRL1_MHL_DISCOVERY_ENABLE);
 
+					/*
+					 * Nothing else to do here... the switch to D3.Hot
+					 * above will allow handling of RGND
+					 */
 					return reg_asw_int0;
 				}
 
@@ -2582,28 +2969,28 @@ static int acc_switch_int_0(struct drv_hw_context *hw_context, uint8_t reg_asw_i
 				rid_index = regAdcValue;
 
 				if (flag_boot & rid_table[rid_index].flags){
-					
+					/* Qualify the existing link as BOOT_DEVICE and do nothing */
 					hw_context->accessory_type = ACCESSORY_BOOT_DEVICE;
 					MHL_TX_DBG_ERR(, "ACCESSORY_BOOT_DEVICE\n");
 					return reg_asw_int0;
 				}
 				if (rid_index == hw_context->boot_usb_impedance_reference) {
-					
+					/* Qualify the existing link as BOOT_DEVICE and do nothing */
 					hw_context->accessory_type = ACCESSORY_BOOT_DEVICE;
 					MHL_TX_DBG_ERR(, "ACCESSORY_BOOT_DEVICE\n");
 					return reg_asw_int0;
 				} else if (rid_index == hw_context->boot_uart_impedance_reference) {
-					
+					/* Qualify the existing link as BOOT_DEVICE and do nothing */
 					hw_context->accessory_type = ACCESSORY_BOOT_DEVICE;
 					MHL_TX_DBG_ERR(, "ACCESSORY_BOOT_DEVICE\n");
 					return reg_asw_int0;
 				} else if (rid_index == (1 + hw_context->boot_usb_impedance_reference)) {
-					
+					/* Qualify the existing link as BOOT_DEVICE and do nothing */
 					hw_context->accessory_type = ACCESSORY_BOOT_DEVICE;
 					MHL_TX_DBG_ERR(, "ACCESSORY_BOOT_DEVICE\n");
 					return reg_asw_int0;
 				} else if (rid_index == (1 + hw_context->boot_uart_impedance_reference)) {
-					
+					/* Qualify the existing link as BOOT_DEVICE and do nothing */
 					hw_context->accessory_type = ACCESSORY_BOOT_DEVICE;
 					MHL_TX_DBG_ERR(, "ACCESSORY_BOOT_DEVICE\n");
 					return reg_asw_int0;
@@ -2612,11 +2999,18 @@ static int acc_switch_int_0(struct drv_hw_context *hw_context, uint8_t reg_asw_i
 						,hw_context->boot_usb_impedance_reference
 						,hw_context->boot_uart_impedance_reference
 						);
+/* begin bz 25172 ( */
 				mhl_tx_write_reg(hw_context
 					, REG_ASW_MANUAL_CTRL
 					, rid_table[regAdcValue].asw_manual_ctrl_value
 					);
 
+				/*
+				 *  If measured value is more than 0 less than 28K,
+				 *  its an audio button
+				 *
+				 * Also check if specific Audio device impedances are there
+				 */
 				if (flag_uart & rid_table[regAdcValue].flags){
 					set_pin(hw_context,UART_LED, GPIO_LED_ON);
 				}
@@ -2627,11 +3021,14 @@ static int acc_switch_int_0(struct drv_hw_context *hw_context, uint8_t reg_asw_i
 					set_pin(hw_context,MIC_LED, GPIO_LED_ON);
 				}
 				if (flag_audio& rid_table[regAdcValue].flags){
-					set_pin(hw_context,AUDIO_LED,GPIO_LED_ON); 
+					set_pin(hw_context,AUDIO_LED,GPIO_LED_ON); /* active low */
 				}
 				if (( flag_audio_button
 					| flag_no_buttons
 					) & rid_table[regAdcValue].flags) {
+					/* don't mess with anything
+					 * to do with enabling or disabling audio polling
+					 */
 				} else if (flag_audio_poll & rid_table[regAdcValue].flags) {
 
 					MHL_TX_DBG_ERR(hw_context, "Start/Enable Audio "\
@@ -2640,7 +3037,7 @@ static int acc_switch_int_0(struct drv_hw_context *hw_context, uint8_t reg_asw_i
 									"deglitch = 8ms and disconnect "\
 									"= 400ms\n");
 
-					#if 0	
+					#if 0	//MDT_HOT_PLUG
 					mdt_init(
 							container_of((void *)hw_context
 										, struct mhl_dev_context
@@ -2648,28 +3045,33 @@ static int acc_switch_int_0(struct drv_hw_context *hw_context, uint8_t reg_asw_i
 							);
 					#endif
 
-					
+					/* check for values 0x18 and 0x19*/
 					if (flag_mcpc_button & rid_table[regAdcValue].flags){
 							hw_context->accessory_type = ACCESSORY_MCPC_SETUP;
 					}else{
 						hw_context->accessory_type = ACCESSORY_BOARD;
 					}
 
-					
+					/* 500ms+ for LKP and 40ms to 500ms for SKP. */
 					mhl_tx_write_reg(hw_context,REG_AUDIO_POLL_BLOCK,0x41);
 
-					
+					/* adc value is the value for the default */
 					mhl_tx_write_reg(hw_context,REG_AUD_POLL_DEFAULT_VAL,regAdcValue<<1);
 
-					
+					/* Setting for 10 ms interval */
 					mhl_tx_write_reg(hw_context, REG_AUDIO_POLL_CTRL,
 									 BIT_AUDIO_POLL_START
 									 | BIT_AUDIO_POLL_EN
 									 | BIT_AUDIO_POLL_INT_MSB);
 
+/* )end bz 25172 */
+					/*
+					 * After fixing the deglitch issue, no need to change
+					 * the default deglitch value
+					 */
 					hw_context->audio_poll_enabled = true;
 
-					
+					// Handled by IsrRegAswInt1
 					mhl_tx_write_reg(hw_context, REG_ASW_INT1_MASK,
 									 BIT_VBUS_CHG_INT_MASK
 									 | BIT_ID_CHG_INT_MASK
@@ -2685,16 +3087,20 @@ static int acc_switch_int_0(struct drv_hw_context *hw_context, uint8_t reg_asw_i
 					audio_disconnect(hw_context);
 					MHL_TX_DBG_ERR(hw_context, "INPUT_DEV_ACCESSORY - R_ID DONE\n");
 					switch (regAdcValue) {
-					case 0x1C:		
-						
+					case 0x1C:		// DEMO CUSTOM CABLE
+						// Turn off for DEMO cable
 						set_pin(hw_context, USB_LED, GPIO_LED_OFF);
 
-						
-					case 0x00:		
-						
+						// Fall through intentionally.
+					case 0x00:		// micro A plug detected <= 10 ohms
+						// in case of micro A usb led stays on. Turn off for DEMO cable
 
-						
-						
+						/*
+						 * VBUS control and M2U_VBUS_CTRL_M decisions will be made again
+						 * 	as part of SDP handling.
+						 */
+						// To make an informed decision about power requirements
+						//      check if power is already provided.
 
 
 						reg_pin_mon = mhl_tx_read_reg(hw_context,REG_PIN_MON);
@@ -2703,19 +3109,22 @@ static int acc_switch_int_0(struct drv_hw_context *hw_context, uint8_t reg_asw_i
 							(BIT_PIN_STATUS_VBUS & reg_pin_mon)?"HIGH":"LOW");
 
 						if ((BIT_PIN_STATUS_VBUS & reg_pin_mon) != 0) {
+							/*
+							 * This is a device that is providing power.
+							 */
 							MHL_TX_DBG_ERR(hw_context,"INPUT_DEV_ACCESSORY - USB HOST - VBUS PWR DETECTED; OFF\n");
 							mhl_tx_vbus_control(VBUS_OFF);
 							hw_context->accessory_type = ACCESSORY_OTG_HOST;
 
-							
+							// OTG needs VBUS to detect a host.
 							MHL_TX_DBG_ERR(hw_context,"INPUT_DEV_ACCESSORY - USB_VBUS <==> VBUS\n");
 							set_pin(hw_context,M2U_VBUS_CTRL_M,1);
 						} else {
 							MHL_TX_DBG_ERR(hw_context,"INPUT_DEV_ACCESSORY - USB DEV - USB_VBUS < != > VBUS\n");
 							set_pin(hw_context,M2U_VBUS_CTRL_M,0);
-							
-							
-							
+							// This is a device that doesn't provide power or is a peripheral
+							//     with an incorrect cable.
+							// Provide this confused device with power.
 							MHL_TX_DBG_ERR(hw_context,"INPUT_DEV_ACCESSORY - USB DEV -VBUS PWR ON\n");
 							mhl_tx_vbus_control(VBUS_ON);
 							hw_context->accessory_type = ACCESSORY_USB_DEVICE;
@@ -2723,24 +3132,24 @@ static int acc_switch_int_0(struct drv_hw_context *hw_context, uint8_t reg_asw_i
 						mhl_tx_write_reg(hw_context,REG_ASW_INT0_MASK, 0);
 						mhl_tx_write_reg(hw_context,REG_ASW_INT0, mhl_tx_read_reg(hw_context,REG_ASW_INT0));
 
-						
+						// Handled by IsrRegAswInt1
 						mhl_tx_write_reg(hw_context,REG_ASW_INT1_MASK, BIT_ID_CHG_INT);
 						mhl_tx_write_reg(hw_context,REG_ASW_INT1, mhl_tx_read_reg(hw_context,REG_ASW_INT1));
 
-						
+						// After power is considered, move the rest of the switch over.
 						MHL_TX_DBG_ERR(hw_context,"INPUT_DEV_ACCESSORY - USB SW ON - ACTIVATE SW\n");
 						mhl_tx_modify_reg(hw_context,REG_ASW_CTRL
 							,BIT_ASW_CTRL_MODE_MASK
 							,BIT_ASW_CTRL_MODE_MANUAL);
 
 
-						
-						
-						
-						
-						
+						// Don't need to move the ID pin since currently don't support OTG.
+						// If ID pin switch is moved over, ID related interrupts must
+						// be disabled here.
+						//
+						// For OTG and host the ID pin impedance remains important but, not here.
 						break;
-					case 0x0F:	
+					case 0x0F:	/* Terminal demo -- accessory board diode does not allow MHL TX power */
 						MHL_TX_DBG_ERR(hw_context,"INPUT_DEV_ACCESSORY - UART - USB_VBUS < != > VBUS\n");
 						set_pin(hw_context,M2U_VBUS_CTRL_M,0);
 
@@ -2793,6 +3202,11 @@ static int acc_switch_int_0(struct drv_hw_context *hw_context, uint8_t reg_asw_i
 					audio_disconnect(hw_context);
 				}
 
+				/*
+				 * This is a hack. When micro B plug has VBUS, ID pin impedance
+				 *    measurement may not complete and keep BIT_ID_CHG_INT & regAswInt1
+				 *     from firing.
+				 */
 
 				MHL_TX_DBG_ERR(hw_context,"INPUT_DEV_ACCESSORY - USB_VBUS < != > VBUS\n");
 				set_pin(hw_context,M2U_VBUS_CTRL_M,0);
@@ -2811,7 +3225,7 @@ static int acc_switch_int_0(struct drv_hw_context *hw_context, uint8_t reg_asw_i
 						 , BIT_DC9_WAKE_DRVFLT
 						 | BIT_DC9_DISC_PULSE_PROCEED
 						);
-				
+				/* Enable interrupts for accessory switch */
 				enable_intr(hw_context, INTR_ASW0,
 						( BIT_RID_MSR_DONE_INT
 						| BIT_RID_MSR_ERR_INT
@@ -2832,7 +3246,7 @@ static int acc_switch_int_0(struct drv_hw_context *hw_context, uint8_t reg_asw_i
 						);
 				mhl_tx_write_reg(hw_context,REG_ASW_INT4_MASK,0xFF);
 				mhl_tx_write_reg(hw_context,REG_8240_USB_CHARGE_PUMP,0x04);
-				
+				// todo, find charge pump register on 8558
 				mhl_tx_write_reg(hw_context,REG_ASW_TEST_CTRL,asw_test_ctrl_default_bits |BIT_ID_DEGLITCH_PAUSE_ENABLE);
 				switch_to_d3(hw_context,false);
 				rid_index = NO_CONNECTION_INDEX;
@@ -2840,14 +3254,14 @@ static int acc_switch_int_0(struct drv_hw_context *hw_context, uint8_t reg_asw_i
 		}
 
 		if (BIT_BC_DONE_INT & reg_asw_int0) {
-			uint8_t regBCcore = 0;		
+			uint8_t regBCcore = 0;		// holds 0x30D
 			extern bool special_charger;
 
 			MHL_TX_DBG_ERR(hw_context, "INTR_BC_DONE detected\n");
 			regBCcore = mhl_tx_read_reg(hw_context,REG_BC_CORE_RESULTS);
 			MHL_TX_DBG_ERR(hw_context,"BC_RESULT - %d\n", (int)regBCcore);
-			
-			
+			// Since ID measurement may not happen if BC_DONE fires
+			//     do work here.
 			switch(firmware_triggered_bc_detection_state){
 			case waiting_for_bc_done_fw_trig:
 
@@ -2855,26 +3269,26 @@ static int acc_switch_int_0(struct drv_hw_context *hw_context, uint8_t reg_asw_i
 					firmware_triggered_bc_detection_state = charging_sdp;
 					set_pin(hw_context,SDP_LED,GPIO_LED_ON);
 					set_pin(hw_context,M2U_VBUS_CTRL_M,1);
-					set_pin(hw_context,USB_LED, GPIO_LED_ON); 
+					set_pin(hw_context,USB_LED, GPIO_LED_ON); // possible USB host is connected
 					MHL_TX_DBG_ERR(hw_context,"INPUT_DEV_ACCESSORY - SDP charger/USB\n");
 				}else if (regBCcore & BIT_BC_CORE_RESULTS_CHARGING_DS_PORT_DETECTED){
 					firmware_triggered_bc_detection_state = charging_cdp;
 					set_pin(hw_context,CDP_LED,GPIO_LED_ON);
 					set_pin(hw_context,M2U_VBUS_CTRL_M,1);
-					set_pin(hw_context,USB_LED, GPIO_LED_ON); 
-					
+					set_pin(hw_context,USB_LED, GPIO_LED_ON); // possible USB host is connected
+					// Since power is provided by a downstream
 					MHL_TX_DBG_ERR(hw_context,"INPUT_DEV_ACCESSORY - CDP charger\n");
 				}else if (regBCcore & BIT_BC_CORE_RESULTS_DEDICATED_DS_PORT_DETECTED){
 					firmware_triggered_bc_detection_state = charging_dcp;
 					set_pin(hw_context,DCP_LED,GPIO_LED_ON);
 					set_pin(hw_context,M2U_VBUS_CTRL_M,0);
-					
+					// Since power is provided by a downstream
 					MHL_TX_DBG_ERR(hw_context,"INPUT_DEV_ACCESSORY - DCP charger.\n");
 				}else if (regBCcore & BIT_BC_CORE_RESULTS_PS2_PORT_DETECTED){
 					if( special_charger ){
 						firmware_triggered_bc_detection_state = waiting_for_bc_done_fw_trig_special;
 						MHL_TX_DBG_ERR(hw_context,"INPUT_DEV_ACCESSORY - special charger detection start.\n");
-						
+						/* turn off manual start so that turning it back on will have an effect */
 						mhl_tx_modify_reg(hw_context,REG_BC_CTRL_1
 							,BIT_BC_CTRL_1_MANUAL_START
 							,0
@@ -2937,11 +3351,11 @@ static int acc_switch_int_0(struct drv_hw_context *hw_context, uint8_t reg_asw_i
 				MHL_TX_DBG_ERR(NULL,"unexpected BC_DONE event. Remaining in state: %d\n"
 					,firmware_triggered_bc_detection_state);
 			}
-			
+			/* do some processing for the new state */
 			switch(firmware_triggered_bc_detection_state){
 			uint8_t	tmp;
 			case no_downstream_charger:
-				
+				/* clear special charger register bit */
 				mhl_tx_modify_reg(hw_context,REG_BC_CTRL_2
 					,BIT_BC_CTRL_2_FORCE_SPECIAL_MODE
 					,0
@@ -2957,7 +3371,7 @@ static int acc_switch_int_0(struct drv_hw_context *hw_context, uint8_t reg_asw_i
 			case charging_ps2:
 			case charging_sony:
 			case charging_apple_1_0A:
-				
+				/* clear special charger register bit */
 				mhl_tx_modify_reg(hw_context,REG_BC_CTRL_2
 					,BIT_BC_CTRL_2_FORCE_SPECIAL_MODE
 					,0
@@ -2966,11 +3380,11 @@ static int acc_switch_int_0(struct drv_hw_context *hw_context, uint8_t reg_asw_i
 					,BIT_BC_CTRL_1_MANUAL_START
 					,0
 					);
-				
+				// Since power is provided by a downstream
 				MHL_TX_DBG_ERR(hw_context,"INPUT_DEV_ACCESSORY - VBUS PWR DETECTED; OFF.\n");
 				mhl_tx_vbus_control(VBUS_OFF);
 
-				
+				// After power is considered, move the rest of the switch over.
 				tmp = mhl_tx_read_reg(hw_context,REG_ASW_CTRL);
 
 				if ((tmp & BIT_ASW_CTRL_MODE_MANUAL) == 0) {
@@ -2978,7 +3392,7 @@ static int acc_switch_int_0(struct drv_hw_context *hw_context, uint8_t reg_asw_i
 					mhl_tx_write_reg(hw_context,REG_ASW_CTRL, tmp | BIT_ASW_CTRL_MODE_MANUAL);
 				}
 
-				
+				/* todo: kiran says that this is unnecessary */
 				mhl_tx_write_reg(hw_context,REG_ASW_MANUAL_CTRL
 					,BIT_ASW_MAN_CTRL_USB_ID_ON
 					|BIT_ASW_MAN_CTRL_USB_D_ON);
@@ -3030,7 +3444,7 @@ static void detach_on_id_change(struct drv_hw_context *hw_context)
 			 , BIT_DC9_WAKE_DRVFLT
 			 | BIT_DC9_DISC_PULSE_PROCEED
 			);
-	
+	/* Enable interrupts for accessory switch */
 	enable_intr(hw_context, INTR_ASW0,
 			( BIT_RID_MSR_DONE_INT
 			| BIT_RID_MSR_ERR_INT
@@ -3051,19 +3465,25 @@ static void detach_on_id_change(struct drv_hw_context *hw_context)
 			);
 	mhl_tx_write_reg(hw_context,REG_ASW_INT4_MASK,0xFF);
 	mhl_tx_write_reg(hw_context,REG_8240_USB_CHARGE_PUMP,0x04);
-	
+	// todo, find charge pump register on 8558
 	mhl_tx_write_reg(hw_context,REG_ASW_TEST_CTRL,asw_test_ctrl_default_bits |BIT_ID_DEGLITCH_PAUSE_ENABLE);
 
 	rid_index = NO_CONNECTION_INDEX;
 }
+/*
+ * acc_switch_int_1
+ *
+ * Interrupt handler for Accessory Switch Interrupt 1.
+ * This interrupt is not applicable to the Sil-8240.
+ */
 static int acc_switch_int_1(struct drv_hw_context *hw_context,
 							uint8_t reg_asw_int1)
 {
-	uint8_t reg_pin_mon;	
+	uint8_t reg_pin_mon;	/* holds 0x34B (REG_PIN_MON) */
 	int ret_val = 0;
 
 	if (reg_asw_int1) {
-		reg_pin_mon = mhl_tx_read_reg(hw_context, REG_PIN_MON);	
+		reg_pin_mon = mhl_tx_read_reg(hw_context, REG_PIN_MON);	/* 0x34B */
 
 		MHL_TX_DBG_INFO(hw_context, "VBAT pin is %s. ID pin is %s IOVCC pin is %s\n"
 	 					,(BIT_PIN_STATUS_VBAT & reg_pin_mon) ? "HIGH" : "LOW"
@@ -3116,12 +3536,15 @@ static int acc_switch_int_1(struct drv_hw_context *hw_context,
 								);
 							if (BIT_RET_MON0_BC_CTRL_BYPASS == hw_context->strapping_value){
 								if (2 == override_strap) {
+								/* make sure that we can control the ID pullup
+										as well as the ID switch
+								*/
 									mhl_tx_modify_reg(hw_context,REG_ASW_TEST_CTRL
 												,BIT_ASW_TEST_CTRL_ASW_FORCE_MODE
 												,BIT_ASW_TEST_CTRL_ASW_FORCE_MODE
 												);
 									asw_test_ctrl_default_bits |= BIT_ASW_TEST_CTRL_ASW_FORCE_MODE;
-									
+									/* ensure that the pull-up is enabled */
 									mhl_tx_modify_reg(hw_context,REG_ASW_ANA_CTRL
 										,BIT_ASW_ANA_CTRL_ID_PULLUP_ON_OFF_MASK
 										,0
@@ -3147,7 +3570,7 @@ static int acc_switch_int_1(struct drv_hw_context *hw_context,
 				}else{
 					if (BIT_RET_MON0_BC_CTRL_BYPASS == hw_context->strapping_value){
 						if (2 == override_strap){
-							
+							/* relinquish control of the ID pullup and ID switch */
 							mhl_tx_modify_reg(hw_context,REG_ASW_TEST_CTRL
 										,BIT_ASW_TEST_CTRL_ASW_FORCE_MODE
 										,0
@@ -3180,8 +3603,8 @@ static int acc_switch_int_1(struct drv_hw_context *hw_context,
 						   (BIT_PIN_STATUS_WAKEUP & reg_pin_mon) ? "HIGH" : "LOW");
 
 		if (BIT_OVP_INT & reg_asw_int1) {
-			uint8_t regOvpMon;		
-			regOvpMon 	= mhl_tx_read_reg(hw_context, REG_OVP_MON);	
+			uint8_t regOvpMon;		/* holds 0x34C () */
+			regOvpMon 	= mhl_tx_read_reg(hw_context, REG_OVP_MON);	/* 0x34C */
 			MHL_TX_DBG_ERR(hw_context, "Over Voltage Protection Interrupt "
 						   "(OVP). PINMON OVP = %02X\n", regOvpMon);
 
@@ -3205,10 +3628,10 @@ static int acc_switch_int_1(struct drv_hw_context *hw_context,
 
 			if (hw_context->accessory_type == ACCESSORY_MCPC_SETUP)
 				hw_context->accessory_type = ACCESSORY_MCPC_ACTIVE;
-			else if (hw_context->accessory_type == ACCESSORY_MCPC_ACTIVE ) {		
-				if (regAdcValue <= TABLE_MCPC_49900_OHM_47K_RCSW) {				
-					if (hw_context->mcpc_button_on == 0) {			
-					    hw_context->mcpc_button_on = 1;			
+			else if (hw_context->accessory_type == ACCESSORY_MCPC_ACTIVE ) {		/* MCPC accessories tend to bounce */
+				if (regAdcValue <= TABLE_MCPC_49900_OHM_47K_RCSW) {				/* RCSW 47K ohm */
+					if (hw_context->mcpc_button_on == 0) {			/* Handle the first 0 ohm and ignore */
+					    hw_context->mcpc_button_on = 1;			/* all others.*/
 				   	    mdt_toggle_keyboard_keycode(
 							 container_of((void *)hw_context
 										, struct mhl_dev_context
@@ -3227,7 +3650,7 @@ static int acc_switch_int_1(struct drv_hw_context *hw_context,
 										, drv_context
 										)
 							,0xA4);
-						break;
+						break;//KEY_PLAYPAUSE
 					case TABLE_ONE_2604_OHM_S1_BUTTON:
 						mdt_toggle_keyboard_keycode(
 							container_of((void *)hw_context
@@ -3235,7 +3658,7 @@ static int acc_switch_int_1(struct drv_hw_context *hw_context,
 										, drv_context
 										)
 							,0x73);
-						break;
+						break;//KEY_VOLUMEUP
 					case TABLE_ONE_3208_OHM_S2_BUTTON:
 						mdt_toggle_keyboard_keycode(
 							container_of((void *)hw_context
@@ -3243,13 +3666,13 @@ static int acc_switch_int_1(struct drv_hw_context *hw_context,
 										, drv_context
 										)
 							,0x72);
-						break;
+						break;//KEY_VOLUMEDOWN
 				};
 			}
 		}
 		if (BIT_LONG_KEY_PRESSED_INT & reg_asw_int1){
 			uint8_t regAdcValue;
-			
+			// NEED A DEBOUNCE HERE ?
 			regAdcValue = mhl_tx_read_reg(hw_context,REG_AUDIO_POLL_STAT1) & MSK_AUDIO_POLL_LKP_IMPED_VAL;
 			regAdcValue >>= 1;
 
@@ -3268,7 +3691,11 @@ static int acc_switch_int_1(struct drv_hw_context *hw_context,
 	return ret_val;
 }
 
-int get_device_id()
+/*
+    get_device_id
+    returns chip Id
+ */
+int get_device_id(/*struct drv_hw_context *hw_context*/)
 {
 	int ret_val;
 	static int device_id = 0;
@@ -3299,6 +3726,10 @@ int get_device_id()
 
 	return device_id;
 }
+/*
+    get_device_rev
+    returns chip revision
+ */
 static int get_device_rev(struct drv_hw_context *hw_context)
 {
 	int ret_val;
@@ -3319,17 +3750,17 @@ static int get_device_rev(struct drv_hw_context *hw_context)
 static void init_transcode_mode(struct drv_hw_context *hw_context)
 {
 	if (hw_context->chip_device_id == DEVICE_ID_8558) {
-		 
+		 /* Power up CVCC 1.2V core */
 		mhl_tx_write_reg(hw_context, REG_POWER_CTRL, 0x75);
 		msleep(100);
 		mhl_tx_write_reg(hw_context, REG_POWER_CTRL, 0x7D);
 
-		
+		/* Toggle SW Reset */
 		mhl_tx_write_reg(hw_context, REG_POWER_CTRL, 0x6D);
 		msleep(10);
 		mhl_tx_write_reg(hw_context, REG_POWER_CTRL, 0x7D);
 
-		
+		/* Enable Tx PLL */
 		mhl_tx_modify_reg(hw_context, REG_TMDS_CCTRL,
 				BIT_TMDS_CCTRL_BGRCTL_MASK |
 				BIT_TMDS_CCTRL_TMDS_OE_MASK |
@@ -3337,99 +3768,134 @@ static void init_transcode_mode(struct drv_hw_context *hw_context)
 				BIT_TMDS_CCTRL_TMDS_OE |
 				BIT_TMDS_CCTRL_CKDT_EN | 0x04);
 
-		
+		/* Enable Tx outputs */
 		mhl_tx_write_reg(hw_context, REG_MHLTX_CFG_OE, 0x3C);
 
-		
+		/* Enable TxPLL clock */
 		mhl_tx_write_reg(hw_context, REG_TMDS_CLK_EN, 0x01);
 
-		
+		/* Enable Tx clock path & Equalizer */
 		mhl_tx_write_reg(hw_context, REG_TMDS_CH_EN, 0x11);
 
-		
+		/* Discovery Registers */
 
-		
+		/* 1.8V CBUS VTH */
 		mhl_tx_write_reg(hw_context, REG_DISC_CTRL5, 0x03);
 
-		
+		/* Enable CBUS discovery */
 		mhl_tx_write_reg(hw_context, REG_DISC_CTRL1, VAL_DISC_CTRL1_DEFAULT | BIT_DISC_CTRL1_STROBE_OFF | BIT_DISC_CTRL1_MHL_DISCOVERY_ENABLE);
 
-		
+		/* Enable HDMI Trans-code mode & DDC port */
 		mhl_tx_write_reg(hw_context, REG_DCTL, 0x1A);
 
 	} else {
-		 
+		 // Enable TxPLL clock
 		mhl_tx_write_reg(hw_context, REG_TMDS_CLK_EN, 0x01);
 
-		 
+		 // Enable Tx clock path & Equalizer
 		mhl_tx_write_reg(hw_context, REG_TMDS_CH_EN, 0x11);
 
-		 
+		 // Enable Rx PLL clock
 		mhl_tx_modify_reg(hw_context, REG_TMDS_CCTRL, BIT_TMDS_CCTRL_BGRCTL_MASK, 0x04);
 
-		 
+		 // Enable CBUS discovery
 		mhl_tx_write_reg(hw_context,REG_DISC_CTRL1, VAL_DISC_CTRL1_DEFAULT | BIT_DISC_CTRL1_STROBE_OFF | BIT_DISC_CTRL1_MHL_DISCOVERY_ENABLE);
 	}
 }
 
+/*****************************************************************************/
+/**
+ * @brief Handler for MHL transmitter reset requests.
+ *
+ * This function is called by the MHL layer to request that the MHL transmitter
+ * chip be reset.  Since the MHL layer is platform agnostic and therefore doesn't
+ * know how to control the transmitter's reset pin each platform application is
+ * required to implement this function to perform the requested reset operation.
+ *
+ * @param[in]	hwResetPeriod	Time in ms. that the reset pin is to be asserted.
+ * @param[in]	hwResetDelay	Time in ms. to wait after reset pin is released.
+ *
+ *****************************************************************************/
 static void board_reset(struct drv_hw_context *hw_context,
 						uint16_t hwResetPeriod,
 						uint16_t hwResetDelay)
 {
-	
+	// Reset the TX chip,
 	set_pin(hw_context,TX_HW_RESET, LOW);
 	msleep(hwResetPeriod);
 	set_pin(hw_context,TX_HW_RESET, HIGH);
 
 	msleep(hwResetDelay);
 }
+/*
+ * clear_and_disable_on_disconnect
+ */
 static void clear_and_disable_on_disconnect(struct drv_hw_context *hw_context)
 {
 	uint8_t	intr_num;
-	
+	/* clear and mask all interrupts */
 	for(intr_num = 0; intr_num < MAX_INTR; intr_num++) {
 		if(DEVICE_ID_8558 == hw_context->chip_device_id) {
 			if(INTR_ASW0 != intr_num && INTR_ASW1 != intr_num) {
-				
+				/* Clear and disable all other interrupts */
 				mhl_tx_write_reg(hw_context, g_intr_tbl[intr_num].stat_page, g_intr_tbl[intr_num].stat_offset, 0xff);
 				enable_intr(hw_context, intr_num, 0x00);
 			}
 		} else {
 			if(INTR_DISC == intr_num) {
-				
+				/* clear discovery interrupts except MHL_EST before going to sleep. */
 				mhl_tx_write_reg(hw_context,
 						g_intr_tbl[INTR_DISC].stat_page,
 						g_intr_tbl[INTR_DISC].stat_offset,
-						0xFF);
+						/*BIT_INTR4_MHL_EST*/0xFF);
 
-				
+				/* Keep only RGND interrupt enabled for 8240 and ASW interrupts for 8558 */
 				enable_intr(hw_context,
 					INTR_DISC,
 					BIT_INTR4_RGND_DETECTION);
 			} else {
-				
+				/* Clear and disable all other interrupts */
 				mhl_tx_write_reg(hw_context, g_intr_tbl[intr_num].stat_page, g_intr_tbl[intr_num].stat_offset, 0xff);
 				enable_intr(hw_context, intr_num, 0x00);
 			}
 		}
 	}
 }
+/*
+ * switch_to_d3
+ * This function performs s/w as well as h/w state transitions.
+ */
 void switch_to_d3(struct drv_hw_context *hw_context,bool do_interrupt_clear)
 {
+	/*
+	 * Check GPIO if chip can enter D3.
+	 * to read/write register contents from SiIMon, user may prevent D3.
+	 */
 	if (get_config(hw_context, ALLOW_D3)) {
 
+		/*
+		 * Need to apply infoframe workaround at every power cycle
+		 */
 		hw_context->ckdt_done = 0;
 
 		mhl_tx_vbus_control(VBUS_OFF);
-		
+		/* Meet an MHL CTS timing - Tsrc:cbus_float */
 		msleep(50);
 
 		if (do_interrupt_clear) {
 			clear_and_disable_on_disconnect(hw_context);
 		}
+		/*
+		 * Change state to D3 by clearing bit 0 power control reg
+		 */
 		if (hw_context->chip_device_id == DEVICE_ID_8558) {
 			mhl_tx_write_reg(hw_context, REG_POWER_CTRL,0x00);
 		} else {
+			/*
+			 * TODO: Check if this is mentioned in the PR?
+			 * Power down must only touch bit 0.
+			 * otherwise RGND interrupt would not be asserted
+			 */
 			mhl_tx_write_reg(hw_context, REG_POWER_CTRL, 0xfe);
 		}
 	} else if (do_interrupt_clear) {
@@ -3437,46 +3903,75 @@ void switch_to_d3(struct drv_hw_context *hw_context,bool do_interrupt_clear)
 	}
 }
 
+/*
+ * disconnect_mhl
+ * This function performs s/w as well as h/w state transitions.
+ */
 static void disconnect_mhl(struct drv_hw_context *hw_context,bool do_interrupt_clear, bool discovery_enable)
 {
+	/*
+	 * Pull down the HPD line to upstream.
+	 * set reg_hpd_out_ovr_en to control the hpd
+	 * and clear reg_hpd_out_ovr_val.
+	 * This is done to prevent upstream to perform EDID or HDCP until we are ready.
+	 */
 	drive_hpd_low(hw_context);
 
+	/*
+	 * Change TMDS termination to high impedance on disconnection
+	 */
 	mhl_tx_write_reg(hw_context, REG_MHLTX_CTL1,
 				BIT_MHLTX_CTL1_TX_TERM_MODE_OFF |
 				BIT_MHLTX_CTL1_DISC_OVRIDE_ON);
 
 	if(DEVICE_ID_8558 == hw_context->chip_device_id) {
-		
+		/* Disable MHL discovery until RID has been measured. */
 		mhl_tx_write_reg(hw_context, REG_DISC_CTRL1, VAL_DISC_CTRL1_DEFAULT);
 	} else if (DEVICE_ID_8240 == hw_context->chip_device_id) {
-		
+		/* Restore default for REG_DISC_CTRL2 */
 		mhl_tx_write_reg(hw_context, REG_DISC_CTRL2, 0xAD);
 
 		if (discovery_enable) {
-			
+			/* Enable MHL discovery so we are waken up by h/w on impedance measurement */
 			mhl_tx_write_reg(hw_context, REG_DISC_CTRL1,
 					VAL_DISC_CTRL1_DEFAULT |
 					BIT_DISC_CTRL1_STROBE_OFF |
 					BIT_DISC_CTRL1_MHL_DISCOVERY_ENABLE);
 		} else {
+			/*
+			*	Disable USB_ID swtich at the first time while mhl chip initialize.
+			*	It can avoid system read adc value before usb driver ready.
+			*	System would enable USB_ID switch later after related driver ready.
+			*/
 			mhl_tx_write_reg(hw_context, REG_DISC_CTRL1,
 					VAL_DISC_CTRL1_DEFAULT | BIT_DISC_CTRL1_STROBE_OFF);
 		}
 	}
 
-	
+	/* Disable hdmi and switch to USB D+/D-*/
 	enable_hdmi(false);
 
 	if (do_interrupt_clear) {
 		clear_and_disable_on_disconnect(hw_context);
 	}
-	
+	/* 11/23: clear this flag to fix DS hot plug issue */
 	hw_context->cbus_status = 0;
 }
 
+/*
+ * int_4_isr
+ * MHL device discovery interrupt handler
+ * 	1. When impedance is measured as 1k, RGND interrupt is asserted.
+ * 	   (only for SiI8240. Impedance is measured via a table for SiI8558)
+ * 	2. Chip sends out wake pulses and discovery pulses.
+ * 	   Then asserts MHL_EST if CBUS stays high to meet MHL timings.
+ * 	3. If discovery fails, NON_MHL_EST is asserted.
+ *  4. If MHL cable is removed, CBUS_DIS is asserted.
+ *     (Need to check this bit all the time)
+ */
 static int int_4_isr(struct drv_hw_context *hw_context, uint8_t int_4_status)
 {
-	int	ret_val = 0; 
+	int	ret_val = 0; /* Safe to clear interrupt from master handler */
 	struct 	mhl_dev_context	*dev_context = get_mhl_device_context(hw_context);
 
 	if ((BIT_INTR4_CBUS_DISCONNECT  & int_4_status) ||
@@ -3487,53 +3982,53 @@ static int int_4_isr(struct drv_hw_context *hw_context, uint8_t int_4_status)
 		set_pin(hw_context,USB_LED, GPIO_LED_OFF);
 		set_pin(hw_context,AUDIO_LED, GPIO_LED_OFF);
 		set_pin(hw_context,MIC_LED,   GPIO_LED_OFF);
-		
+		/* Setup termination etc. */
 		hw_context->intr_info->flags |= DRV_INTR_FLAG_DISCONNECT;
 		if (BIT_INTR4_CBUS_DISCONNECT & int_4_status) {
-#ifdef DDC_BYPASS_API 
+#ifdef DDC_BYPASS_API //(
 			si_8240_8558_drv_ddc_bypass_control(hw_context,0);
-#endif 
+#endif //)
 			disconnect_mhl(hw_context, true, false);
-			
+			/* Inform MHL disconnect and cable type to USB driver */
 			dev_context->isMHL = false;
 			dev_context->statMHL = CONNECT_TYPE_UNKNOWN;
 			queue_work(dev_context->wq, &dev_context->mhl_notifier_work);
 			switch_to_d3(hw_context,false);
-		} else { 
+		} else { /* must be BIT_INTR4_NON_MHL_EST */
 			disconnect_mhl(hw_context, false, false);
-			
+			/* Inform MHL disconnect and cable type to USB driver */
 			dev_context->isMHL = false;
 			dev_context->statMHL = CONNECT_TYPE_UNKNOWN;
 			queue_work(dev_context->wq, &dev_context->mhl_notifier_work);
 			switch_to_d3(hw_context,true);
 		}
 
-		dev_context->fake_cable_out = false;	
+		dev_context->fake_cable_out = false;	/*For fake remove event used */
 		set_pin(hw_context,SINK_VBUS_ON_LED,
 				get_config(hw_context,TWELVE_VOLT_PS_SENSE) ?
 				GPIO_LED_ON : GPIO_LED_OFF);
 		rid_index = NO_CONNECTION_INDEX;
-		ret_val = 0xFF;	
+		ret_val = 0xFF;	/* interrupt has been cleared already in disconnect_mhl */
 
 	} else if (int_4_status & BIT_INTR4_RGND_DETECTION) {
-		
+		/* For 8240 only. 8558 does not unmask RGND Interrupt */
 		if (0x02 == (mhl_tx_read_reg(hw_context, REG_DISC_STAT2) & 0x03)) {
 			MHL_TX_DBG_ERR(hw_context, "Cable impedance = 1k (MHL Device)\n");
-			
+			/* Enable HDMI and switch to MHL D+/D- */
 			enable_hdmi(true);
 
-			
+			/* Power up the chip cores to access registers */
 			power_up(hw_context);
-			
+			/* Ensure Wake up pulse is sent */
 			mhl_tx_write_reg(hw_context, REG_DISC_CTRL9
 						, BIT_DC9_WAKE_DRVFLT
 						| BIT_DC9_DISC_PULSE_PROCEED
 						);
 
-			
+			/* Call platform function to turn the VBUS on for unpowered dongle */
 			mhl_tx_vbus_control(VBUS_ON);
 			msleep(100);
-			
+			/* Inform MHL connect and cable type to USB driver */
 			dev_context->isMHL = true;
 			dev_context->statMHL = CONNECT_TYPE_INTERNAL;
 			queue_work(dev_context->wq, &dev_context->mhl_notifier_work);
@@ -3542,16 +4037,16 @@ static int int_4_isr(struct drv_hw_context *hw_context, uint8_t int_4_status)
 					mhl_tx_read_reg(hw_context, REG_DISC_STAT2));
 		}
 
-		
+		/* enable remaining discovery interrupts */
 		enable_intr(hw_context, INTR_DISC,
 				  BIT_INTR4_MHL_EST
 				| BIT_INTR4_NON_MHL_EST
 				| BIT_INTR4_CBUS_LKOUT
 				| BIT_INTR4_CBUS_DISCONNECT
 				| BIT_INTR4_RGND_DETECTION
-				| BIT_INTR4_VBUS_CHG 
+				| BIT_INTR4_VBUS_CHG // this is required
 				);
-		
+		/* Enable MSC interrupt to handle initial exchanges */
 		enable_intr(hw_context, INTR_MERR,
 				 ( BIT_CBUS_DDC_ABRT
 				 | BIT_CBUS_MSC_ABORT_RCVD
@@ -3567,18 +4062,30 @@ static int int_4_isr(struct drv_hw_context *hw_context, uint8_t int_4_status)
 				 | BIT_CBUS_MSC_MT_DONE_NACK
 				));
 	} else if (int_4_status & BIT_INTR4_MHL_EST) {
+		/*
+		 * ENABLE_DISCOVERY ensures it sends wake up and discovery pulse
+		 * 	 and as result sink/dongle would respond CBUS high.
+		 * 8240: ENABLE_DISCOVERY is always set. Therefore, on successful
+		 * 		 discovery, 8240 will assert MHL_EST.
+		 * 8588: ENABLE_DISCOVERY is performed after accessory switch interrupt
+		 * 		 discovers 1K. Then MHL_EST will be asserted.
+		 */
 		MHL_TX_DBG_ERR(hw_context, "got MHL_EST.  MHL connection\n");
 
-		
+		/* turn on  MHL LED */
 		set_pin(hw_context,MHL_LED,GPIO_LED_ON);
 		set_pin(hw_context,USB_LED, GPIO_LED_OFF);
 		set_pin(hw_context,SINK_VBUS_ON_LED,
 				get_config(hw_context,TWELVE_VOLT_PS_SENSE) ?
 				GPIO_LED_ON:GPIO_LED_OFF);
 
-		
+		/* Setup registers and enable interrupts for DCAP_RDY, SET_HPD etc. */
 		init_regs(hw_context);
 
+		/*
+		 *  Setting this flag triggers sending DCAP_RDY.
+		 *  Tested RK-9296 - it works fine.
+		 */
 		hw_context->intr_info->flags |= DRV_INTR_FLAG_CONNECT;
 	}
 	return ret_val;
@@ -3589,7 +4096,7 @@ static int g2wb_isr(struct drv_hw_context *hw_context, uint8_t intr_stat)
 	uint8_t	ret_val = 0;
 	uint8_t	mdt_buffer[20] = {0};
 
-	
+	/* Read error register if there was any problem */
 	ret_val  = mhl_tx_read_reg(hw_context, REG_CBUS_MDT_INT_1);
 
 	if (ret_val) {
@@ -3598,24 +4105,32 @@ static int g2wb_isr(struct drv_hw_context *hw_context, uint8_t intr_stat)
 	} else {
 		uint8_t	length;
 
-		
+		/* Read all bytes */
 		mhl_tx_read_reg_block(hw_context,
 				REG_CBUS_MDT_RCV_READ_PORT,
 				16,
 				mdt_buffer);
 
-		
+		/* first byte contains the length of data */
 		length = mdt_buffer[0];
 		/*
 		 * There isn't any way to know how much of the scratch pad
 		 * was written so we have to read it all.  The app. will have
 		 * to parse the data to know how much of it is valid.
 		 */
+/*		mhl_tx_read_reg_block(hw_context, REG_CBUS_MDT_RCV_READ_PORT,
+				ARRAY_SIZE(hw_context->write_burst_data),
+				hw_context->write_burst_data);
+*/
 		memcpy(hw_context->write_burst_data, &mdt_buffer[1], 16);
 
-		
+		/* Signal upper layer of this arrival */
 		hw_context->intr_info->flags |= DRV_INTR_FLAG_WRITE_BURST;
 
+		/*
+		 * Clear current level in the FIFO.
+		 * Moves pointer to the next keep RSM enabled
+		 */
 		mhl_tx_write_reg(hw_context,
 				  REG_CBUS_MDT_RCV_CONTROL,
 				  BIT_CBUS_MDT_RCV_CONTROL_RFIFO_CLR_CUR_CLEAR
@@ -3641,7 +4156,7 @@ void si_mhl_tx_drv_device_isr(struct drv_hw_context *hw_context,
 
 	MHL_TX_DBG_INFO(hw_context, "\n\ngot INTR\n");
 
-	
+	/* Skip checking interrupts if GPIO pin is not asserted anymore */
 	for(intr_num = 0; (intr_num < MAX_INTR) && (is_interrupt_asserted()); intr_num++) {
 		if(g_intr_tbl[intr_num].mask) {
 			int reg_value;
@@ -3657,7 +4172,7 @@ void si_mhl_tx_drv_device_isr(struct drv_hw_context *hw_context,
 
 			intr_stat = (uint8_t)reg_value;
 
-			
+			/* Process only specific interrupts we have enabled. Ignore others*/
 			intr_stat = intr_stat & g_intr_tbl[intr_num].mask;
 			if (intr_stat) {
 				int already_cleared;
@@ -3665,20 +4180,23 @@ void si_mhl_tx_drv_device_isr(struct drv_hw_context *hw_context,
 #ifdef	PRINT_ALL_INTR
 				MHL_TX_DBG_ERR(hw_context, "INTR-%s = %02X\n",
 						g_intr_tbl[intr_num].name, intr_stat);
-#else	
+#else	// PRINT_ALL_INTR
 				MHL_TX_DBG_INFO(hw_context, "INTR-%s = %02X\n",
 						g_intr_tbl[intr_num].name, intr_stat);
-#endif	
+#endif	// PRINT_ALL_INTR
 
-				if (intr_num == 0)	
+				if (intr_num == 0)	/*For Debug purpose to print INT_4*/
 					MHL_TX_DBG_ERR(hw_context, "INTR-%s = %02X\n",
 							g_intr_tbl[intr_num].name, intr_stat);
 
 				already_cleared = g_intr_tbl[intr_num].isr(hw_context, intr_stat);
 				if (already_cleared >= 0) {
+					/*
+					 * only clear the interrupts that were not cleared by the specific ISR.
+					 */
 					intr_stat &= ~already_cleared;
 					if (intr_stat) {
-						
+						/* Clear interrupt since specific ISR did not. */
 						mhl_tx_write_reg(hw_context,
 								g_intr_tbl[intr_num].stat_page,
 								g_intr_tbl[intr_num].stat_offset,
@@ -3688,17 +4206,17 @@ void si_mhl_tx_drv_device_isr(struct drv_hw_context *hw_context,
 			}
 		}
 #ifdef	PRINT_ALL_INTR
-		
+		/* These lines print all interrupt status irrespective of mask */
 		else {
 			uint8_t	intr_stat;
-			
+			/* Only for debugging - Print other masked interrupts - do not clear */
 			intr_stat = mhl_tx_read_reg(hw_context,
 							g_intr_tbl[intr_num].stat_page,
 							g_intr_tbl[intr_num].stat_offset);
 			MHL_TX_DBG_ERR(hw_context, "INTN-%s = %02X\n",
 					g_intr_tbl[intr_num].name, intr_stat);
 		}
-#endif	
+#endif	// PRINT_ALL_INTR
 	}
 }
 
@@ -3706,7 +4224,7 @@ static void trigger_retention(struct drv_hw_context *hw_context)
 {
 	int dummy;
 	mhl_tx_write_reg(hw_context,REG_POWER_STAT ,BIT_POWER_STAT_I2C_RETAIN);
-	dummy = mhl_tx_read_reg(hw_context,REG_POWER_STAT); 
+	dummy = mhl_tx_read_reg(hw_context,REG_POWER_STAT); /* commit USE_RET */
 }
 
 
@@ -3715,7 +4233,7 @@ static void check_strapping_mode(struct drv_hw_context *hw_context)
 	if (hw_context->suspend_strapped_mode) {
 		int ret_data_0;
 		int dummy;
-		
+		/* load up the retention registers with PON defaults */
 		trigger_retention(hw_context);
 
 		set_pin(hw_context,USB_LED     ,GPIO_LED_OFF);
@@ -3731,6 +4249,9 @@ static void check_strapping_mode(struct drv_hw_context *hw_context)
 		ret_data_0 &= 0xF3;
 		if (BIT_RET_MON0_BC_CTRL_BYPASS== hw_context->strapping_value){
 			if (2 == override_strap){
+				/*
+				* format the value from REG_RET_MON0 for retention register 0, bits 3:2
+				*/
 				ret_data_0 |= (BIT_RET_MON0_BC_CTRL_FW_TRIG >> 4);
 				mhl_tx_modify_reg(hw_context,REG_ASW_TEST_CTRL
 							,BIT_ASW_TEST_CTRL_ASW_FORCE_MODE
@@ -3741,7 +4262,7 @@ static void check_strapping_mode(struct drv_hw_context *hw_context)
 
 		mhl_tx_modify_reg(hw_context,REG_ASW_TEST_CTRL,BIT_RET_ADDR_CLR,BIT_RET_ADDR_CLR);
 		mhl_tx_write_reg(hw_context,REG_RETENTION_WRITE,ret_data_0);
-		
+		/* do dummy read to satisfy H/W requirements for REG_RETENTION_WRITE */
 		dummy =  mhl_tx_read_reg(hw_context,REG_ASW_TEST_CTRL);
 
 		board_reset(hw_context,TX_HW_RESET_PERIOD,TX_HW_RESET_DELAY);
@@ -3755,6 +4276,13 @@ static void check_strapping_mode(struct drv_hw_context *hw_context)
 	}
 }
 
+/*
+ * si_mhl_tx_chip_initialize
+ *
+ * Chip specific initialization.
+ * This function resets and initializes the transmitter and puts chip into sleep.
+ * MHL Detection interrupt setups up the chip for video.
+ */
 int si_mhl_tx_chip_initialize(struct drv_hw_context *hw_context, bool discovery_enable)
 {
 	int ret_val;
@@ -3762,14 +4290,19 @@ int si_mhl_tx_chip_initialize(struct drv_hw_context *hw_context, bool discovery_
 	hw_context->accessory_type =ACCESSORY_DISCONNECTED;
 	hw_context->mcpc_button_on=0;
 	hw_context->suspend_strapped_mode = false;
-	set_pin(hw_context,TX_FW_WAKE, LOW);
+	/*
+	 * Don't yet know which MHL transmitter we're controlling so we assume
+	 * it's an 8558 since this part is pretty much a superset of the 8240.
+	 * FW_WAKE pin is only available in 8558.
+	 */
+	set_pin(hw_context,TX_FW_WAKE, LOW);/* inverter on board */
 
 	if (get_device_id() == DEVICE_ID_8558) {
 		int ret_mon0;
 
-		
-		
-		
+		// Clear all mask. By default FW_WAKE mask is enabled.
+		// disabling FW_WAKE ensures if we returned with error, no interrupt
+		// shall be asserted.
 		enable_intr(hw_context, INTR_ASW1, 0);
 
 		ret_mon0 = mhl_tx_read_reg(hw_context,REG_RET_MON0);
@@ -3805,30 +4338,31 @@ int si_mhl_tx_chip_initialize(struct drv_hw_context *hw_context, bool discovery_
 			set_pin(hw_context,USB_LED     ,GPIO_LED_ON);
 			set_pin(hw_context,USB_ID_L_LED,GPIO_LED_ON);
 			if (override_strap) {
-				
+				/* for all values other than zero */
 				hw_context->suspend_strapped_mode = true;
 			} else {
 				MHL_TX_DBG_ERR(hw_context,"remaining in bypass mode\n");
 				set_pin(hw_context,M2U_VBUS_CTRL_M,1);
-				
+				//return -1;
 
-				
-				
+				//to continue init and report success, so the
+				//driver could be properly removed by rmmod (to fix #27447)
 			}
 			break;
 		case BIT_RET_MON0_BC_CTRL_RESERVED:
 			return -1;
 		}
 	} else {
-		
+		/* Power up 8240 to read device ID */
 		power_up(hw_context);
 	}
 	ret_val = get_device_rev(hw_context);
 
+/*	if (ret_val > 0)		We should alert if someone is running older chip */
 	{
 		hw_context->chip_rev_id = (uint8_t)ret_val;
 
-		ret_val = get_device_id();
+		ret_val = get_device_id(/*hw_context*/);
 		if (ret_val > 0) {
 			hw_context->chip_device_id = (uint16_t)ret_val;
 
@@ -3840,14 +4374,17 @@ int si_mhl_tx_chip_initialize(struct drv_hw_context *hw_context, bool discovery_
 			if(DEVICE_ID_8558 == hw_context->chip_device_id) {
 				int ret_mon0, ret_mon1, regAdcTable;
 				uint8_t	reg_asw_mon;
-				regAdcTable = mhl_tx_read_reg(hw_context, REG_ADC_R_TABLE);	
+				regAdcTable = mhl_tx_read_reg(hw_context, REG_ADC_R_TABLE);	/* 0x346 */
 				regAdcTable &= MSK_ADC_R_TABLE;
-				reg_asw_mon = mhl_tx_read_reg(hw_context, REG_ASW_MON);		
+				reg_asw_mon = mhl_tx_read_reg(hw_context, REG_ASW_MON);		/* 0x347 */
 				MHL_TX_DBG_ERR(hw_context,"switch position:0x%02x,%s\n"
 								,reg_asw_mon &MSK_ASW_MON_ASW
 								,table_asw_mon[reg_asw_mon &MSK_ASW_MON_ASW]
 								);
 				if (get_config(hw_context,MCPC_MODE)){
+					/*
+					 * Choose loose or strict RID error checking based on MCPC mode
+					 */
 
 					mhl_tx_write_reg(hw_context
 							, REG_RID2
@@ -3894,7 +4431,7 @@ int si_mhl_tx_chip_initialize(struct drv_hw_context *hw_context, bool discovery_
 						, ret_mon0  & BIT_RET_MON0_MEAS_BOOT_USB_MASK
 						, ret_mon1  & BIT_RET_MON1_MEAS_BOOT_UART_MASK
 						);
-				
+				/* Enable interrupts for accessory switch */
 				enable_intr(hw_context, INTR_ASW0,
 						( BIT_RID_MSR_DONE_INT
 						| BIT_RID_MSR_ERR_INT
@@ -3907,17 +4444,18 @@ int si_mhl_tx_chip_initialize(struct drv_hw_context *hw_context, bool discovery_
 						( BIT_VBUS_CHG_INT
 						| BIT_ID_CHG_INT
 						| BIT_ADC_CHG_INT
+//						| BIT_WKUP_HIGH_INT
 						| BIT_OVP_INT
 						| BIT_SHORT_KEY_PRESSED_INT
 						| BIT_LONG_KEY_PRESSED_INT
 						| BIT_LONG_KEY_RELEASED_INT)
 						);
-				
+				/* Move to disconnected state. Let RGND/MHL connection event start the driver */
 				disconnect_mhl(hw_context, true, discovery_enable);
-				
+				/* use retention registers */
 				check_strapping_mode(hw_context);
 			} else {
-				
+				/* Move to disconnected state. Let RGND/MHL connection event start the driver */
 				disconnect_mhl(hw_context, true, discovery_enable);
 			}
 			switch_to_d3(hw_context,false);
@@ -3946,11 +4484,11 @@ void si_mhl_tx_id_impedance_measurement(struct drv_hw_context *hw_context)
 {
 	int dummy;
 	bool fw_wake_state;
-	
+	/* save state of FW_WAKE pin */
 	fw_wake_state = get_config(hw_context,TX_FW_WAKE);
 
-	
-	set_pin(hw_context,TX_FW_WAKE, LOW);
+	/* wake up the 8558 */
+	set_pin(hw_context,TX_FW_WAKE, LOW);/* inverter on board */
 	MHL_TX_DBG_INFO(hw_context,"REG_ASW_INT0_MASK: 0x%02x\n"
 		,mhl_tx_read_reg(hw_context,REG_ASW_INT0_MASK));
 	msleep(TX_HW_RESET_PERIOD);
@@ -3959,9 +4497,13 @@ void si_mhl_tx_id_impedance_measurement(struct drv_hw_context *hw_context)
 		, BIT_ASW_CTRL_RID_MEASUREMENT_REQUEST_STROBE
 		, BIT_ASW_CTRL_RID_MEASUREMENT_REQUEST_STROBE
 		);
+	/*
+		do an extra I2C transaction to satisfy H/W
+		requirement for strobing this bit
+	*/
 	dummy = mhl_tx_read_reg(hw_context,REG_ASW_CTRL);
 
-	
+	/* restore state of FW_WAKE ping */
 	set_pin(hw_context,TX_FW_WAKE, fw_wake_state);
 }
 
@@ -3971,7 +4513,7 @@ int si_mhl_tx_get_retention_range(struct drv_hw_context *hw_context,retention_da
 	mhl_tx_modify_reg(hw_context,REG_ASW_TEST_CTRL,BIT_RET_ADDR_CLR,BIT_RET_ADDR_CLR);
 	ret_val = mhl_tx_read_reg_block(hw_context,REG_RETENTION_READ,NUM_RETENTION_REGS,values);
 
-	
+	/* do dummy read to satisfy H/W requirements for REG_RETENTION_READ */
 	dummy =  mhl_tx_read_reg(hw_context,REG_ASW_TEST_CTRL);
 	MHL_TX_DBG_ERR(hw_context,"ret-regs: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n"
 		,values[0],values[1],values[2],values[3],values[4]
@@ -3987,7 +4529,7 @@ int si_mhl_tx_set_retention_range(struct drv_hw_context *hw_context,retention_da
 	mhl_tx_modify_reg(hw_context,REG_ASW_TEST_CTRL,BIT_RET_ADDR_CLR,BIT_RET_ADDR_CLR);
 	ret_val = mhl_tx_write_reg_block(hw_context,REG_RETENTION_WRITE,NUM_RETENTION_REGS,values);
 
-	
+	/* do dummy read to satisfy H/W requirements for REG_RETENTION_WRITE */
 	dummy =  mhl_tx_read_reg(hw_context,REG_ASW_TEST_CTRL);
 
 	return ret_val;
@@ -3999,7 +4541,7 @@ void si_mhl_tx_drv_shutdown(struct drv_hw_context *hw_context)
 		if (hw_context->suspend_strapped_mode) {
 			int dummy;
 			int ret_data_0;
-			set_pin(hw_context,TX_FW_WAKE, LOW);
+			set_pin(hw_context,TX_FW_WAKE, LOW);/* inverter on board */
 			mhl_tx_modify_reg(hw_context,REG_ASW_TEST_CTRL,BIT_RET_ADDR_CLR,BIT_RET_ADDR_CLR);
 			ret_data_0 = mhl_tx_read_reg(hw_context,REG_RETENTION_READ);
 			ret_data_0 &= 0xF3;
@@ -4007,8 +4549,10 @@ void si_mhl_tx_drv_shutdown(struct drv_hw_context *hw_context)
 			mhl_tx_modify_reg(hw_context,REG_ASW_TEST_CTRL,BIT_RET_ADDR_CLR,BIT_RET_ADDR_CLR);
 			mhl_tx_write_reg(hw_context,REG_RETENTION_WRITE,ret_data_0);
 			dummy = mhl_tx_read_reg(hw_context,REG_RET_MON0);
+			/* reset the board to let the chip reset itself into bypass mode
+			*/
 			board_reset(hw_context,TX_HW_RESET_PERIOD,TX_HW_RESET_DELAY);
-			set_pin(hw_context,TX_FW_WAKE, HIGH);
+			set_pin(hw_context,TX_FW_WAKE, HIGH);/* inverter on board */
 		} else {
 			board_reset(hw_context,TX_HW_RESET_PERIOD,TX_HW_RESET_DELAY);
 		}
@@ -4019,7 +4563,7 @@ void si_mhl_tx_drv_shutdown(struct drv_hw_context *hw_context)
 #ifdef CONFIG_INTERNAL_CHARGING_SUPPORT
 void Enable_Backdoor_Access( struct drv_hw_context *hw_context )
 {
-	mhl_tx_write_reg(hw_context, REG_CBUS_MSC_CMD_OR_OFFSET, 0x33);	
+	mhl_tx_write_reg(hw_context, REG_CBUS_MSC_CMD_OR_OFFSET, 0x33);	/*enable backdoor access*/
 	mhl_tx_write_reg(hw_context, REG_CBUS_MSC_1ST_TRANSMIT_DATA, 0x80);
 	mhl_tx_write_reg(hw_context, REG_CBUS_MSC_COMMAND_START,
 					BIT_CBUS_MSC_WRITE_STAT_OR_SET_INT);
@@ -4027,7 +4571,7 @@ void Enable_Backdoor_Access( struct drv_hw_context *hw_context )
 
 void Disable_Backdoor_Access( struct drv_hw_context *hw_context )
 {
-	mhl_tx_write_reg(hw_context, REG_CBUS_MSC_CMD_OR_OFFSET, 0x33);	
+	mhl_tx_write_reg(hw_context, REG_CBUS_MSC_CMD_OR_OFFSET, 0x33);	/*disable backdoor access*/
 	mhl_tx_write_reg(hw_context, REG_CBUS_MSC_1ST_TRANSMIT_DATA, 0x00);
 	mhl_tx_write_reg(hw_context, REG_CBUS_MSC_COMMAND_START,
 					BIT_CBUS_MSC_WRITE_STAT_OR_SET_INT);
@@ -4035,56 +4579,56 @@ void Disable_Backdoor_Access( struct drv_hw_context *hw_context )
 
 void Tri_state_dongle_GPIO0( struct drv_hw_context *hw_context )
 {
-	mhl_tx_write_reg(hw_context, REG_CBUS_WB_XMIT_DATA_0, 0xFF);    
-	mhl_tx_write_reg(hw_context, REG_CBUS_WB_XMIT_DATA_1, 0x7F);    
-	mhl_tx_write_reg(hw_context, REG_CBUS_WB_XMIT_DATA_2, 0xFF);    
-	mhl_tx_write_reg(hw_context, REG_CBUS_MSC_WRITE_BURST_DATA_LEN, 0x02);  
-	mhl_tx_write_reg(hw_context, REG_CBUS_MSC_CMD_OR_OFFSET, 0x48);         
-	mhl_tx_write_reg(hw_context, REG_CBUS_MSC_COMMAND_START, BIT_CBUS_MSC_WRITE_BURST);     
+	mhl_tx_write_reg(hw_context, REG_CBUS_WB_XMIT_DATA_0, 0xFF);    /* main page , FE for Cbus page*/
+	mhl_tx_write_reg(hw_context, REG_CBUS_WB_XMIT_DATA_1, 0x7F);    /* offset*/
+	mhl_tx_write_reg(hw_context, REG_CBUS_WB_XMIT_DATA_2, 0xFF);    /* data set GPIO=input*/
+	mhl_tx_write_reg(hw_context, REG_CBUS_MSC_WRITE_BURST_DATA_LEN, 0x02);  /* burst length-1*/
+	mhl_tx_write_reg(hw_context, REG_CBUS_MSC_CMD_OR_OFFSET, 0x48);         /* offset in scratch pad*/
+	mhl_tx_write_reg(hw_context, REG_CBUS_MSC_COMMAND_START, BIT_CBUS_MSC_WRITE_BURST);     /*trig this cmd*/
 }
 
 void Low_dongle_GPIO0(struct drv_hw_context *hw_context)
 {
-	mhl_tx_write_reg(hw_context, REG_CBUS_WB_XMIT_DATA_0, 0xFF);    
-	mhl_tx_write_reg(hw_context, REG_CBUS_WB_XMIT_DATA_1, 0x7F);    
-	mhl_tx_write_reg(hw_context, REG_CBUS_WB_XMIT_DATA_2, 0xFC);    
-	mhl_tx_write_reg(hw_context, REG_CBUS_MSC_WRITE_BURST_DATA_LEN, 0x02);  
-	mhl_tx_write_reg(hw_context, REG_CBUS_MSC_CMD_OR_OFFSET, 0x48);         
-	mhl_tx_write_reg(hw_context, REG_CBUS_MSC_COMMAND_START, BIT_CBUS_MSC_WRITE_BURST);     
+	mhl_tx_write_reg(hw_context, REG_CBUS_WB_XMIT_DATA_0, 0xFF);    /* main page , FE for Cbus page*/
+	mhl_tx_write_reg(hw_context, REG_CBUS_WB_XMIT_DATA_1, 0x7F);    /* offset*/
+	mhl_tx_write_reg(hw_context, REG_CBUS_WB_XMIT_DATA_2, 0xFC);    /* data set GPIO=input*/
+	mhl_tx_write_reg(hw_context, REG_CBUS_MSC_WRITE_BURST_DATA_LEN, 0x02);  /* burst length-1*/
+	mhl_tx_write_reg(hw_context, REG_CBUS_MSC_CMD_OR_OFFSET, 0x48);         /* offset in scratch pad*/
+	mhl_tx_write_reg(hw_context, REG_CBUS_MSC_COMMAND_START, BIT_CBUS_MSC_WRITE_BURST);     /* trig this cmd*/
 }
 
 void AppVbusControl(struct drv_hw_context *hw_context, uint8_t dev_cat)
 {
 	uint8_t devcap = dev_cat;
 
-	if (!devcap) {	
+	if (!devcap) {	/*Not Sink, NOt Dongle, Not Source*/
 		MHL_TX_DBG_ERR(NULL, "Invalid dev_cat:%#x\n", dev_cat);
 		return;
 	}
 
 	MHL_TX_DBG_ERR(hw_context, "dev_cat:%#x\n", dev_cat);
 	if ((devcap & (MHL_DEV_CATEGORY_POW_BIT | MHL_DEV_CAT_DONGLE)) ==
-		(MHL_DEV_CATEGORY_POW_BIT | MHL_DEV_CAT_SINK)) {
+		(MHL_DEV_CATEGORY_POW_BIT | MHL_DEV_CAT_SINK)) {/*Sink can output power*/
 		MHL_TX_DBG_ERR(hw_context, "==Rx_Sink\n");
 		htc_charging_enable(dev_cat);
-	} else if ((devcap & MHL_DEV_CAT_DONGLE) == MHL_DEV_CAT_DONGLE) { 
+	} else if ((devcap & MHL_DEV_CAT_DONGLE) == MHL_DEV_CAT_DONGLE) { /*Dongle, due to POW=0 if USB attached, and GPIO0=low*/
 		MHL_TX_DBG_ERR(hw_context, "==Rx_Dongle, 3 state GPIO0\n");
-		Enable_Backdoor_Access(hw_context); 
+		Enable_Backdoor_Access(hw_context); // Karl 20131219 eliminate the times to en/disable backdoor
 		Tri_state_dongle_GPIO0(hw_context);
-		mhl_tx_write_reg(hw_context, REG_CBUS_MSC_CMD_OR_OFFSET, 0x02);
+		mhl_tx_write_reg(hw_context, REG_CBUS_MSC_CMD_OR_OFFSET, 0x02);/* readDevCap02*/
 		mhl_tx_write_reg(hw_context, REG_CBUS_MSC_COMMAND_START,
-						BIT_CBUS_MSC_READ_DEVCAP);	
+						BIT_CBUS_MSC_READ_DEVCAP);	/*send cmd*/
 		msleep(1);
 
 		devcap = mhl_tx_read_reg(hw_context, REG_CBUS_PRI_RD_DATA_1ST);
 
 		if (devcap & MHL_DEV_CATEGORY_POW_BIT) {
 			MHL_TX_DBG_ERR(hw_context, "devcap=%02x ,POW=1=, low GPIO0\n",devcap);
-			
+			/* Turn off phone Vbus output*/
 			Low_dongle_GPIO0(hw_context);
-			mhl_tx_write_reg(hw_context, REG_CBUS_MSC_CMD_OR_OFFSET, 0x02);	
+			mhl_tx_write_reg(hw_context, REG_CBUS_MSC_CMD_OR_OFFSET, 0x02);	/* readDevCap02*/
 			mhl_tx_write_reg(hw_context, REG_CBUS_MSC_COMMAND_START,
-							BIT_CBUS_MSC_READ_DEVCAP);	
+							BIT_CBUS_MSC_READ_DEVCAP);	/* send cmd*/
 			msleep(1);
 
 		} else{
@@ -4092,10 +4636,10 @@ void AppVbusControl(struct drv_hw_context *hw_context, uint8_t dev_cat)
 
 			Disable_Backdoor_Access(hw_context);
 
-			
-			mhl_tx_write_reg(hw_context, REG_CBUS_MSC_CMD_OR_OFFSET, 0x0F);	
+			/*clear 0xc8:0xbc to 0x00*/
+			mhl_tx_write_reg(hw_context, REG_CBUS_MSC_CMD_OR_OFFSET, 0x0F);	/* readDevCap0f*/
 			mhl_tx_write_reg(hw_context, REG_CBUS_MSC_COMMAND_START,
-							BIT_CBUS_MSC_READ_DEVCAP);	
+							BIT_CBUS_MSC_READ_DEVCAP);	/* send cmd*/
 			msleep(1);
 
 			devcap = mhl_tx_read_reg(hw_context, REG_CBUS_PRI_RD_DATA_1ST);
@@ -4109,13 +4653,14 @@ void AppVbusControl(struct drv_hw_context *hw_context, uint8_t dev_cat)
 			htc_charging_enable(dev_cat);
 		} else {
 			MHL_TX_DBG_ERR(hw_context, "USB attached, charger disabled, 3 state GPIO0\n");
-			Tri_state_dongle_GPIO0(hw_context);
+			Tri_state_dongle_GPIO0(hw_context);/*avoid disconnect USB,
+							    *no POW change interrupt happened situation*/
 		}
 		Disable_Backdoor_Access(hw_context);
 	}
-	
-	mhl_tx_write_reg(hw_context, REG_CBUS_MSC_CMD_OR_OFFSET, 0x0F);	
-	mhl_tx_write_reg(hw_context, REG_CBUS_MSC_COMMAND_START, BIT_CBUS_MSC_READ_DEVCAP);
+	/*clear 0xc8:0xbc to 0x00*/
+	mhl_tx_write_reg(hw_context, REG_CBUS_MSC_CMD_OR_OFFSET, 0x0F);	/*readDevCap0f*/
+	mhl_tx_write_reg(hw_context, REG_CBUS_MSC_COMMAND_START, BIT_CBUS_MSC_READ_DEVCAP);/* send cmd*/
 	msleep(1);
 	devcap = mhl_tx_read_reg(hw_context, REG_CBUS_PRI_RD_DATA_1ST);
 

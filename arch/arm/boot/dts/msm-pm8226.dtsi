@@ -228,7 +228,6 @@
 			qcom,stored-batt-cc-uah= <(-1)>;
 			qcom,stored-batt-update-time= <(-1)>;
 			qcom,store-batt-data-soc-thre = <100>;
-			qcom,disable-pwrpath-after-eoc = <1>;
 
 			qcom,batt-pres-status@1208 {
 				reg = <0x1208 0x1>;

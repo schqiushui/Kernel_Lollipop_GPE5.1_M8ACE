@@ -13,10 +13,12 @@
 #include "msm_sensor.h"
 #include <linux/async.h>
 #define imx214_800m_fov87_SENSOR_NAME "imx214_800m_fov87"
+//HTC_START, read OTP for dual cam calibration
 #define DUAL_CAL_OTP_SIZE 1024
 static uint8_t otp[20];
 static uint8_t otp_mem[DUAL_CAL_OTP_SIZE];
 static uint8_t *path= "/data/OTPData2.dat";
+//HTC_END
 DEFINE_MSM_MUTEX(imx214_800m_fov87_mut);
 
 static struct msm_sensor_ctrl_t imx214_800m_fov87_s_ctrl;
@@ -25,7 +27,7 @@ static struct msm_sensor_power_setting imx214_800m_fov87_power_setting[] = {
 #ifdef CONFIG_REGULATOR_NCP6924
 	{
 		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_STANDBY,  
+		.seq_val = SENSOR_GPIO_STANDBY,  //used for NCP6924_CAM_EN
 		.config_val = GPIO_OUT_HIGH,
 		.delay = 1,
 	},
@@ -189,7 +191,7 @@ int32_t imx214_800m_fov87_read_otp_memory(uint8_t *otpPtr, struct msm_sensor_ctr
 	short OTP_addr = 0x0A04;
 
 	pr_info("%s: read OTP for dual cam calibration\n", __func__);
-	
+	//read full OTP memory: 16 pages, each page 64 bytes
 	for (page = 0; page < 16; page++)
 	{
         rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(s_ctrl->sensor_i2c_client, 0x0A02, page, MSM_CAMERA_I2C_BYTE_DATA);
@@ -223,8 +225,8 @@ int32_t imx214_800m_fov87_read_otp_memory(uint8_t *otpPtr, struct msm_sensor_ctr
 static void imx214_800m_fov87_parse_otp_mem(struct msm_sensor_ctrl_t *s_ctrl){
  int32_t i = 0, j = 0;
 
-  for(i=2; i>=0; i--) { 
-		if (otp_mem[i*16] == 0)  
+  for(i=2; i>=0; i--) { //search row 2 ~ 0 in page 0
+		if (otp_mem[i*16] == 0)  //check Module vendor at 0ffset 0x00 at each row
 			continue;
 
 		for (j =0; j<16;j++)
@@ -298,7 +300,7 @@ static int imx214_800m_fov87_read_fuseid(struct sensorb_cfg_data *cdata,
     cdata->af_value.AF_MACRO_LSB = otp[11];
     cdata->af_value.LENS_ID = otp[1];
 
-    
+    //otp[3] == 0x31
     strlcpy(cdata->af_value.ACT_NAME, "ti201_act", sizeof("ti201_act"));
 
     if (otp[3] == 0x11){
@@ -315,7 +317,7 @@ static int32_t imx214_800m_fov87_platform_probe(struct platform_device *pdev)
 {
 	int32_t rc = 0;
 	const struct of_device_id *match;
-	static int probe_success = 0; 
+	static int probe_success = 0; //set to 1 once probe done in multiple config case
 
 	if (probe_success){
 		pr_info("%s:probe_success %d skip %s\n", __func__, probe_success, dev_name(&pdev->dev));
@@ -363,7 +365,8 @@ static void __exit imx214_800m_fov87_exit_module(void)
 	return;
 }
 
-#if defined(CONFIG_MACH_DUMMY) || defined(CONFIG_MACH_DUMMY) || defined(CONFIG_MACH_DUMMY)
+//HTC_START , move read OTP to sensor probe
+#if defined(CONFIG_MACH_EYE_UL) || defined(CONFIG_MACH_EYE_WHL) || defined(CONFIG_MACH_EYE_WL)
 static int imx214_800m_fov87_match_otp_info(void)
 {
 	if (otp[3] == 0x31)
@@ -390,18 +393,21 @@ int32_t imx214_800m_fov87_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 			} else
 				first = 1;
 	    }
-#if defined(CONFIG_MACH_DUMMY) || defined(CONFIG_MACH_DUMMY) || defined(CONFIG_MACH_DUMMY)
+#if defined(CONFIG_MACH_EYE_UL) || defined(CONFIG_MACH_EYE_WHL) || defined(CONFIG_MACH_EYE_WL)
 		rc = imx214_800m_fov87_match_otp_info();
 #endif
 	}
 	return rc;
 }
+//HTC_END
 
 static struct msm_sensor_fn_t imx214_800m_fov87_sensor_func_tbl = {
 	.sensor_config = msm_sensor_config,
 	.sensor_power_up = msm_sensor_power_up,
 	.sensor_power_down = msm_sensor_power_down,
+//HTC_START , move read OTP to sensor probe
 	.sensor_match_id = imx214_800m_fov87_sensor_match_id,
+//HTC_END
 	.sensor_i2c_read_fuseid = imx214_800m_fov87_read_fuseid,
 };
 

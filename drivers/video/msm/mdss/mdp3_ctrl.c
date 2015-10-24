@@ -171,7 +171,7 @@ void dma_done_notify_handler(void *arg)
 void vsync_count_down(void *arg)
 {
 	struct mdp3_session_data *session = (struct mdp3_session_data *)arg;
-	
+	/* We are counting down to turn off clocks */
 	atomic_dec(&session->vsync_countdown);
 	if (atomic_read(&session->vsync_countdown) == 0)
 		schedule_work(&session->clk_off_work);
@@ -205,6 +205,11 @@ static int mdp3_ctrl_vsync_enable(struct msm_fb_data_type *mfd, int enable)
 		vsync_client.arg = mdp3_session;
 		arg = &vsync_client;
 	} else if (atomic_read(&mdp3_session->vsync_countdown)) {
+		/*
+		 * Now that vsync is no longer needed we will
+		 * shutdown dsi clocks as soon as cnt down == 0
+		 * for cmd mode panels
+		 */
 		vsync_client.handler = vsync_count_down;
 		vsync_client.arg = mdp3_session;
 		arg = &vsync_client;
@@ -215,6 +220,10 @@ static int mdp3_ctrl_vsync_enable(struct msm_fb_data_type *mfd, int enable)
 	mdp3_session->dma->vsync_enable(mdp3_session->dma, arg);
 	mdp3_clk_enable(0, 0);
 
+	/*
+	 * Need to fake vsync whenever dsi interface is not
+	 * active or when dsi clocks are currently off
+	 */
 	if (enable && mdp3_session->status == 1
 			&& (mdp3_session->vsync_before_commit ||
 			!mdp3_session->intf->active)) {
@@ -570,7 +579,7 @@ static int mdp3_ctrl_on(struct msm_fb_data_type *mfd)
 	mdp3_ctrl_notifier_register(mdp3_session,
 		&mdp3_session->mfd->mdp_sync_pt_data.notifier);
 
-	
+	/* request bus bandwidth before DSI DMA traffic */
 	rc = mdp3_ctrl_res_req_bus(mfd, 1);
 	if (rc) {
 		pr_err("fail to request bus resource\n");
@@ -1002,7 +1011,7 @@ static int mdp3_ctrl_display_commit_kickoff(struct msm_fb_data_type *mfd,
 		rc = mdp3_session->dma->update(mdp3_session->dma,
 			(void *)data->addr,
 			mdp3_session->intf);
-		
+		/* This is for the previous frame */
 		if (rc < 0) {
 			mdp3_ctrl_notify(mdp3_session,
 				MDP_NOTIFY_FRAME_TIMEOUT);
@@ -1027,7 +1036,7 @@ static int mdp3_ctrl_display_commit_kickoff(struct msm_fb_data_type *mfd,
 	}
 
 	if (mdp3_session->first_commit) {
-		
+		/*wait for one frame time to ensure frame is sent to panel*/
 		msleep(1000 / panel_info->mipi.frame_rate);
 		mdp3_session->first_commit = false;
 	}
@@ -1095,7 +1104,7 @@ static void mdp3_ctrl_pan_display(struct msm_fb_data_type *mfd,
 		rc = mdp3_session->dma->update(mdp3_session->dma,
 				(void *)(mfd->iova + offset),
 				mdp3_session->intf);
-		
+		/* This is for the previous frame */
 		if (rc < 0) {
 			mdp3_ctrl_notify(mdp3_session,
 				MDP_NOTIFY_FRAME_TIMEOUT);
@@ -1117,7 +1126,7 @@ static void mdp3_ctrl_pan_display(struct msm_fb_data_type *mfd,
 	}
 
 	if (mdp3_session->first_commit) {
-		
+		/*wait for one frame time to ensure frame is sent to panel*/
 		msleep(1000 / panel_info->mipi.frame_rate);
 		mdp3_session->first_commit = false;
 	}
@@ -1390,7 +1399,7 @@ static int mdp3_bl_scale_config(struct msm_fb_data_type *mfd,
 	pr_debug("update scale = %d, min_lvl = %d\n", mfd->bl_scale,
 							mfd->bl_min_lvl);
 
-	
+	/* update current backlight to use new scaling*/
 	mdss_fb_set_backlight(mfd, curr_bl);
 	mutex_unlock(&mfd->bl_lock);
 	return ret;

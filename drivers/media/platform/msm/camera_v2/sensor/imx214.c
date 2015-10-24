@@ -12,9 +12,11 @@
  */
 #include "msm_sensor.h"
 #define imx214_SENSOR_NAME "imx214"
+//HTC_START, read OTP for dual cam calibration
 #define DUAL_CAL_OTP_SIZE 1024
 static uint8_t otp[18];
 static uint8_t otp_mem[DUAL_CAL_OTP_SIZE];
+//HTC_END
 DEFINE_MSM_MUTEX(imx214_mut);
 
 static struct msm_sensor_ctrl_t imx214_s_ctrl;
@@ -23,7 +25,7 @@ static struct msm_sensor_power_setting imx214_power_setting[] = {
 #ifdef CONFIG_REGULATOR_NCP6924
 	{
 		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_STANDBY,  
+		.seq_val = SENSOR_GPIO_STANDBY,  //used for NCP6924_CAM_EN
 		.config_val = GPIO_OUT_HIGH,
 		.delay = 1,
 	},
@@ -72,6 +74,52 @@ static struct msm_sensor_power_setting imx214_power_setting[] = {
 	},
 };
 
+/*
+static struct msm_sensor_power_setting imx214_MCLK_19M_power_setting[] = {
+	{
+		.seq_type = SENSOR_VREG,
+		.seq_val = CAM_VIO,
+		.config_val = 1,
+		.delay = 5,
+	},
+	{
+		.seq_type = SENSOR_VREG,
+		.seq_val = CAM_VDIG,
+		.config_val = 1,
+		.delay = 5,
+	},
+	{
+		.seq_type = SENSOR_VREG,
+		.seq_val = CAM_VANA,
+		.config_val = 1,
+		.delay = 5,
+	},
+	{
+		.seq_type = SENSOR_VREG,
+		.seq_val = CAM_VAF,
+		.config_val = 1,
+		.delay = 5,
+	},
+	{
+		.seq_type = SENSOR_GPIO,
+		.seq_val = SENSOR_GPIO_RESET,
+		.config_val = GPIO_OUT_HIGH,
+		.delay = 5,
+	},
+	{
+		.seq_type = SENSOR_CLK,
+		.seq_val = SENSOR_CAM_MCLK,
+		.config_val = 19200000,
+		.delay = 5,
+	},
+	{
+		.seq_type = SENSOR_I2C_MUX,
+		.seq_val = 0,
+		.config_val = 0,
+		.delay = 5,
+	},
+};
+*/
 static struct v4l2_subdev_info imx214_subdev_info[] = {
 	{
 		.code   = V4L2_MBUS_FMT_SBGGR10_1X10,
@@ -179,6 +227,7 @@ static int imx214_sysfs_init(void)
 	return 0 ;
 }
 
+//HTC_START, read OTP for dual cam calibration
 int32_t imx214_read_otp_memory(uint8_t *otpPtr, struct sensorb_cfg_data *cdata, struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0;
@@ -186,7 +235,7 @@ int32_t imx214_read_otp_memory(uint8_t *otpPtr, struct sensorb_cfg_data *cdata, 
 	int page = 0, i = 0, j = 0;
 	short OTP_addr = 0x0A04;
 
-	
+	//read full OTP memory: 16 pages, each page 64 bytes
 	for (page = 0; page < 16; page++)
 	{
         rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(s_ctrl->sensor_i2c_client, 0x0A02, page, MSM_CAMERA_I2C_BYTE_DATA);
@@ -216,7 +265,9 @@ int32_t imx214_read_otp_memory(uint8_t *otpPtr, struct sensorb_cfg_data *cdata, 
 	pr_info("%s: read OTP memory done\n", __func__);
 	return rc;
 }
+//HTC_END
 
+/*HTC_START*/
 static int imx214_read_fuseid(struct sensorb_cfg_data *cdata,
 	struct msm_sensor_ctrl_t *s_ctrl)
 {
@@ -225,11 +276,11 @@ static int imx214_read_fuseid(struct sensorb_cfg_data *cdata,
     uint16_t read_data = 0;
     static int first= true;
     int valid_layer = -1;
-    
+    //HTC_START, read OTP for dual cam calibration
     static int read_otp = true;
     uint8_t *path= "/data/OTPData.dat";
     struct file* f;
-    
+    //HTC_END
 
     if (first)
     {
@@ -289,19 +340,21 @@ static int imx214_read_fuseid(struct sensorb_cfg_data *cdata,
   s_ctrl->sensordata->sensor_info->fuse_id[2] = otp[1];
   s_ctrl->sensordata->sensor_info->fuse_id[3] = otp[2];
 
-        
+        //HTC_START, read OTP for dual cam calibration
         pr_info("%s: read OTP for dual cam calibration\n", __func__);
         imx214_read_otp_memory(otp_mem, cdata, s_ctrl);
         if (rc<0) {
             pr_err("%s: imx214_read_otp_memory failed %d\n", __func__, rc);
             return rc;
         }
-        
+        //HTC_END
     }
 
+//HTC_START , move read OTP to sensor probe
     if(cdata != NULL)
     {
-    
+//HTC_END
+    //HTC_START, read OTP for dual cam calibration
     if (read_otp)
     {
         f = msm_fopen (path, O_CREAT|O_RDWR|O_TRUNC, 0666);
@@ -314,7 +367,7 @@ static int imx214_read_fuseid(struct sensorb_cfg_data *cdata,
         }
         read_otp = false;
     }
-    
+    //HTC_END
 
     cdata->cfg.fuse.fuse_id_word1 = 0;
     cdata->cfg.fuse.fuse_id_word2 = otp[0];
@@ -358,6 +411,7 @@ static int imx214_read_fuseid(struct sensorb_cfg_data *cdata,
 
     strlcpy(cdata->af_value.ACT_NAME, "lc898212_act", sizeof("lc898212_act"));
     pr_info("%s: OTP Actuator Name = %s\n",__func__, cdata->af_value.ACT_NAME);
+//HTC_START , move read OTP to sensor probe
 	}
 	else
 	{
@@ -367,9 +421,11 @@ static int imx214_read_fuseid(struct sensorb_cfg_data *cdata,
 	    pr_info("%s: OTP Driver IC Vendor & Version = 0x%x\n",  __func__,  otp[6]);
 	    pr_info("%s: OTP Actuator vender ID & Version = 0x%x\n",__func__,  otp[7]);
 	}
+//HTC_END
     return rc;
 
 }
+/*HTC_END*/
 
 static int32_t imx214_platform_probe(struct platform_device *pdev)
 {
@@ -405,6 +461,7 @@ static void __exit imx214_exit_module(void)
 	return;
 }
 
+//HTC_START , move read OTP to sensor probe
 int32_t imx214_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0;
@@ -422,12 +479,15 @@ int32_t imx214_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 	}
 	return rc;
 }
+//HTC_END
 
 static struct msm_sensor_fn_t imx214_sensor_func_tbl = {
 	.sensor_config = msm_sensor_config,
 	.sensor_power_up = msm_sensor_power_up,
 	.sensor_power_down = msm_sensor_power_down,
+//HTC_START , move read OTP to sensor probe
 	.sensor_match_id = imx214_sensor_match_id,
+//HTC_END
 	.sensor_i2c_read_fuseid = imx214_read_fuseid,
 };
 

@@ -215,9 +215,12 @@ static int __init board_bootloader_setup(char *str)
 
 	strcpy(temp, str);
 
-	
+	/*parse the last parameter*/
 	while ((p = strsep(&args, ".")) != NULL) build = p;
 
+	/* Sometime hboot version would change from .X000 to .X001, .X002,...
+	 * So compare the first character to avoid unnecessary error.
+	 */
 	if (build) {
 		if (build[0] == '0') {
 			build_flag = BUILD_MODE_SHIP;

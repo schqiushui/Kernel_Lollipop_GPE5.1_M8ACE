@@ -66,7 +66,7 @@
 #include "mach/htc_battery_cell.h"
 #include <linux/qpnp/qpnp-charger.h>
 #include <linux/qpnp/qpnp-bms.h>
-#endif 
+#endif /* CONFIG_HTC_BATT_8960 */
 
 #ifdef CONFIG_HTC_DEBUG_FOOTPRINT
 #include <mach/htc_mnemosyne.h>
@@ -357,28 +357,28 @@ int __init htc_cpu_usage_register(void)
 #endif
 
 static int __maybe_unused m8wl_usb_product_id_match_array[] = {
-		0x0ff8, 0x0e65, 
-		0x0fa4, 0x0eab, 
-		0x0fa5, 0x0eac, 
-		0x0f91, 0x0ec3, 
-		0x0f64, 0x07ca, 
-		0x0f63, 0x07cb, 
-		0x0f29, 0x07c8, 
-		0x0f2a, 0x07c9, 
-		0x0f9a, 0x0eae, 
-		0x0f99, 0x0ead, 
+		0x0ff8, 0x0e65, /* CDC-ECM */
+		0x0fa4, 0x0eab, /* mtp+adb+ums+rmnet */
+		0x0fa5, 0x0eac, /* mtp+ums+rmnet */
+		0x0f91, 0x0ec3, /* mtp+ums */
+		0x0f64, 0x07ca, /* mtp+ums+acm */
+		0x0f63, 0x07cb, /* mtp+adb+ums+acm*/
+		0x0f29, 0x07c8, /* mtp+adb+ums+acm+rmnet */
+		0x0f2a, 0x07c9, /* mtp+ums+acm+rmnet */
+		0x0f9a, 0x0eae, /* mtp+ums+diag */
+		0x0f99, 0x0ead, /* mtp+ums+adb+diag */
 		-1,
 };
 
 static int __maybe_unused m8wl_usb_product_id_rndis[] = {
-	0x0762, 
-	0x0768, 
-	0x0763, 
-	0x0769, 
-	0x07be, 
-	0x07c2, 
-	0x07bf, 
-	0x07c3, 
+	0x0762, /* Internet Sharing: rndis+mtp+adb+ums+diag */
+	0x0768, /* IPT: rndis+mtp+adb+ums+diag */
+	0x0763, /* Internet Sharing: rndis+mtp+ums+diag */
+	0x0769, /* IPT: rndis+mtp+ums+diag */
+	0x07be, /* Internet Sharing: rndis+mtp+adb+ums+acm*/
+	0x07c2, /* IPT: rndis+mtp+adb+ums+acm */
+	0x07bf, /* Internet Sharing: rndis+mtp+ums+acm */
+	0x07c3, /* IPT: rndis+mtp+ums+acm */
 };
 static int __maybe_unused m8wl_usb_product_id_match(int product_id, int intrsharing)
 {
@@ -389,7 +389,7 @@ static int __maybe_unused m8wl_usb_product_id_match(int product_id, int intrshar
 	if (!pid_array)
 		return product_id;
 
-	
+	/* VZW pid re-match will not apply on MFG mode */
 	if (board_mfg_mode())
 		return product_id;
 
@@ -401,16 +401,16 @@ static int __maybe_unused m8wl_usb_product_id_match(int product_id, int intrshar
 	printk("%s(%d):product_id=%d, intrsharing=%d\n", __func__, __LINE__, product_id, intrsharing);
 
 	switch (product_id) {
-		case 0x0f8c: 
+		case 0x0f8c: /* rndis+mtp+adb+ums+diag */
 			category = 0;
 			break;
-		case 0x0f8d: 
+		case 0x0f8d: /* rndis+mtp+ums+diag*/
 			category = 1;
 			break;
-		case 0x0f5f: 
+		case 0x0f5f: /* rndis+mtp+adb+ums+acm */
 			category = 2;
 			break;
-		case 0x0f60: 
+		case 0x0f60: /* rndis+mtp+ums+acm*/
 			category = 3;
 			break;
 		default:
@@ -429,7 +429,7 @@ static int __maybe_unused m8wl_usb_product_id_match(int product_id, int intrshar
 
 static struct android_usb_platform_data android_usb_pdata = {
 	.vendor_id      = 0x0bb4,
-	.product_id     = 0x060e, 
+	.product_id     = 0x060e, /* FIXME: Dummy Sense 4.0 product id */
 	.product_name		= "Android Phone",
 	.manufacturer_name	= "HTC",
 	.serial_number = "123456789012",
@@ -437,7 +437,7 @@ static struct android_usb_platform_data android_usb_pdata = {
 	.usb_rmnet_interface = "smd,bam",
 	.usb_diag_interface = "diag",
 	.fserial_init_string = "smd:modem,tty,tty:autobot,tty:serial,tty:autobot,tty:acm",
-#ifdef CONFIG_MACH_DUMMY
+#ifdef CONFIG_MACH_M8_WL
 	.match = m8wl_usb_product_id_match,
 #endif
 	.nluns = 1,
@@ -461,13 +461,13 @@ static void htc_8974_add_usb_devices(void)
 	mid = board_mid();
 
 	if (board_mfg_mode() == 0) {
-#ifdef CONFIG_MACH_DUMMY
+#ifdef CONFIG_MACH_M8_WHL
 		android_usb_pdata.nluns = 2;
 		android_usb_pdata.cdrom_lun = 0x2;
-#elif defined(CONFIG_MACH_DUMMY)
+#elif defined(CONFIG_MACH_B2_WLJ)
 		android_usb_pdata.nluns = 2;
 		android_usb_pdata.cdrom_lun = 0x2;
-#elif defined(CONFIG_MACH_DUMMY)
+#elif defined(CONFIG_MACH_MEC_WHL)
 		android_usb_pdata.nluns = 2;
 		android_usb_pdata.cdrom_lun = 0x2;
 #else
@@ -478,47 +478,53 @@ static void htc_8974_add_usb_devices(void)
 	}
 #ifdef CONFIG_MACH_M8
 	android_usb_pdata.product_id	= 0x061A;
-#elif defined(CONFIG_MACH_DUMMY)
+#elif defined(CONFIG_MACH_M8_WL)
 	android_usb_pdata.product_id	= 0x0616;
 	android_usb_pdata.vzw_unmount_cdrom = 1;
-#elif defined(CONFIG_MACH_DUMMY)
+//	android_usb_pdata.nluns = 2;
+//        android_usb_pdata.cdrom_lun = 0x3;
+#elif defined(CONFIG_MACH_M8_WHL)
 	android_usb_pdata.product_id	= 0x061A;
-#elif defined(CONFIG_MACH_DUMMY)
+#elif defined(CONFIG_MACH_M8_TL)
 	android_usb_pdata.product_id	= 0x0623;
-#elif defined(CONFIG_MACH_DUMMY)
-	android_usb_pdata.product_id	= 0x063B;
-#elif defined(CONFIG_MACH_DUMMY)
-	android_usb_pdata.product_id	= 0x0643;
-#elif defined(CONFIG_MACH_DUMMY)
+#elif defined(CONFIG_MACH_M8_DUG)
+	android_usb_pdata.product_id	= 0x063B;/* M8_DUGL */
+#elif defined(CONFIG_MACH_M8_DWG)
+	android_usb_pdata.product_id	= 0x0643;/* M8_DWGL */
+#elif defined(CONFIG_MACH_M8_UHL)
+	android_usb_pdata.product_id	= 0x063A;
+#elif defined(CONFIG_MACH_MEC_TL)
 	android_usb_pdata.product_id	= 0x0635;
-#elif defined(CONFIG_MACH_DUMMY)
+#elif defined(CONFIG_MACH_MEC_UL)
 	android_usb_pdata.product_id	= 0x0638;
-#elif defined(CONFIG_MACH_DUMMY)
-	android_usb_pdata.product_id	= 0x0636;
-#elif defined(CONFIG_MACH_DUMMY)
+#elif defined(CONFIG_MACH_MEC_DUG)
+	android_usb_pdata.product_id	= 0x0636;/* MEC_DUGL */
+#elif defined(CONFIG_MACH_B2_WLJ)
 	android_usb_pdata.product_id	= 0x0634;
-#elif defined(CONFIG_MACH_DUMMY)
+#elif defined(CONFIG_MACH_B2_UHL)
 	android_usb_pdata.product_id	= 0x0642;
-#elif defined(CONFIG_MACH_DUMMY)
-	android_usb_pdata.product_id	= 0x0644;
-#elif defined(CONFIG_MACH_DUMMY)
+#elif defined(CONFIG_MACH_B2_UL)
+	android_usb_pdata.product_id	= 0x0642;/* use B2_UHL first */
+#elif defined(CONFIG_MACH_MEC_DWG)
+	android_usb_pdata.product_id	= 0x0644;/* MEC_DWGL */
+#elif defined(CONFIG_MACH_MEC_WHL)
 	android_usb_pdata.product_id	= 0x0646;
-#elif defined(CONFIG_MACH_DUMMY)
+#elif defined(CONFIG_MACH_MELS_TUHL)
 	android_usb_pdata.product_id	= 0x0651;
-#elif defined(CONFIG_MACH_DUMMY)
-	android_usb_pdata.product_id	= 0x064C;
+#elif defined(CONFIG_MACH_EYE_UL)
+	android_usb_pdata.product_id	= 0x064C;/* EYE_UL_ATT */
 #else
-	
+	/* DUG, WHL */
 #endif
 
 	if (strcmp("0PFH20000", mid)==0)
-		android_usb_pdata.product_id	= 0x064B;
+		android_usb_pdata.product_id	= 0x064B;/* EYE_TUHL */
 	else if (strcmp("0P6B90000", mid)==0 || strcmp("0P6B91000", mid)==0)
-		android_usb_pdata.product_id	= 0x064A;
+		android_usb_pdata.product_id	= 0x064A;/* M8LS_UHL */
 
 	platform_device_register(&android_usb_device);
 }
-#if 0
+#if (defined(CONFIG_MACH_GLU_U) || defined(CONFIG_MACH_GLU_WLJ))
 static ssize_t syn_vkeys_show(struct kobject *kobj,
 			struct kobj_attribute *attr, char *buf)
 {
@@ -596,12 +602,13 @@ static void __init htc_8974_early_memory(void)
 #if defined(CONFIG_HTC_BATT_8960)
 #ifdef CONFIG_HTC_PNPMGR
 extern int pnpmgr_battery_charging_enabled(int charging_enabled);
-#endif 
+#endif /* CONFIG_HTC_PNPMGR */
 static int critical_alarm_voltage_mv[] = {3000, 3200, 3400};
 
 static struct htc_battery_platform_data htc_battery_pdev_data = {
+/*8974_FIXME to remove icharger and igague before finish porting*/
 	.guage_driver = 0,
-#if defined(CONFIG_MACH_DUMMY)
+#if defined(CONFIG_MACH_B2_WLJ)
 	.chg_limit_active_mask = HTC_BATT_CHG_LIMIT_BIT_TALK |
 								HTC_BATT_CHG_LIMIT_BIT_NAVI |
 								HTC_BATT_CHG_LIMIT_BIT_KDDI |
@@ -622,16 +629,16 @@ static struct htc_battery_platform_data htc_battery_pdev_data = {
 	.smooth_chg_full_delay_min = 3,
 	.decreased_batt_level_check = 1,
 	.force_shutdown_batt_vol = 3000,
-#if defined(CONFIG_MACH_DUMMY)
+#if defined(CONFIG_MACH_B2_WLJ)
 	.usb_temp_monitor_enable = 1,
-	.usb_temp_overheat_increase_threshold = 25, 
-	.normal_usb_temp_threshold = 450, 
+	.usb_temp_overheat_increase_threshold = 25, /* USB temp increases 2.5 degreeC within 10sec*/
+	.normal_usb_temp_threshold = 450, /* Start to monitor USB temp only when it's over 45 degreeC*/
 	.usb_temp_overheat_threshold = 650,
 #endif
-#if (defined(CONFIG_MACH_DUMMY) || defined(CONFIG_MACH_DUMMY) || defined(CONFIG_MACH_DUMMY))
+#if (defined(CONFIG_MACH_EYE_UL) || defined(CONFIG_MACH_EYE_WHL) || defined(CONFIG_MACH_EYE_WL))
 	.disable_pwrpath_after_eoc = 1,
 #endif
-	
+	/* charger */
 	.icharger.name = "pm8941",
 	.icharger.get_charging_source = pm8941_get_charging_source,
 	.icharger.get_charging_enabled = pm8941_get_charging_enabled,
@@ -664,7 +671,7 @@ static struct htc_battery_platform_data htc_battery_pdev_data = {
 	.icharger.store_battery_charger_data = pm8941_store_battery_charger_data_emmc,
 	.icharger.set_ftm_charge_enable_type = pm8941_set_ftm_charge_enable_type,
 	.icharger.set_charger_after_eoc = pm8941_set_charger_after_eoc,
-	
+	/* gauge */
 	.igauge.name = "pm8941",
 	.igauge.get_battery_voltage = pm8941_get_batt_voltage,
 	.igauge.get_battery_current = pm8941_bms_get_batt_current,
@@ -673,7 +680,7 @@ static struct htc_battery_platform_data htc_battery_pdev_data = {
 	.igauge.get_battery_id_mv = pm8941_get_batt_id_mv,
 	.igauge.get_battery_soc = pm8941_bms_get_batt_soc,
 	.igauge.get_battery_cc = pm8941_bms_get_batt_cc,
-#if defined(CONFIG_MACH_DUMMY)
+#if defined(CONFIG_MACH_B2_WLJ)
 	.igauge.get_usb_temperature = pm8941_get_usb_temperature,
 	.igauge.usb_overheat_otg_mode_check = pm8941_usb_overheat_otg_mode_check,
 #endif
@@ -689,10 +696,10 @@ static struct htc_battery_platform_data htc_battery_pdev_data = {
 	.igauge.set_lower_voltage_alarm_threshold =
 						pm8941_batt_lower_alarm_threshold_set,
 	.igauge.check_soc_for_sw_ocv = pm8941_check_soc_for_sw_ocv,
-	
+	/* pnpmgr */
 #ifdef CONFIG_HTC_PNPMGR
 	.notify_pnpmgr_charging_enabled = pnpmgr_battery_charging_enabled,
-#endif 
+#endif /* CONFIG_HTC_PNPMGR */
 };
 static struct platform_device htc_battery_pdev = {
 	.name = "htc_battery",
@@ -717,8 +724,14 @@ int __init htc_batt_cell_register(void)
 	platform_device_register(&htc_battery_cell_pdev);
 	return 0;
 }
-#endif 
+#endif /* CONFIG_HTC_BATT_8960 */
 
+/*
+ * Used to satisfy dependencies for devices that need to be
+ * run early or in a particular order. Most likely your device doesn't fall
+ * into this category, and thus the driver should not be added here. The
+ * EPROBE_DEFER can satisfy most dependency problems.
+ */
 void __init htc_8974_add_drivers(void)
 {
 	msm_smem_init();
@@ -735,12 +748,12 @@ void __init htc_8974_add_drivers(void)
 #if defined(CONFIG_HTC_BATT_8960)
 	htc_batt_cell_register();
 	msm8974_add_batt_devices();
-#endif 
-#if 0
+#endif /* CONFIG_HTC_BATT_8960 */
+#if (defined(CONFIG_MACH_GLU_U) || defined(CONFIG_MACH_GLU_WLJ))
 	syn_init_vkeys_8974();
 #endif
 	htc_8974_cable_detect_register();
-	
+	/* not load usb driver in mfgkernel:diag58 and gift mode */
 	if (board_mfg_mode() != 6 && board_mfg_mode() != 7)
 		htc_8974_add_usb_devices();
 	else
@@ -805,7 +818,7 @@ static void __init htc_8974_map_io(void)
 
 void __init htc_8974_init_early(void)
 {
-	
+	/* TODO: use dt to config persistent_ram */
 	persistent_ram_early_init(&htc_8974_persistent_ram);
 
 #ifdef CONFIG_HTC_DEBUG_FOOTPRINT

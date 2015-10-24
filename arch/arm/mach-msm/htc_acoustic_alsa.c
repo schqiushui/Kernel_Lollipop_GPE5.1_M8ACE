@@ -108,6 +108,7 @@ struct hw_component HTC_AUD_HW_LIST[AUD_HW_NUM] = {
 EXPORT_SYMBOL(HTC_AUD_HW_LIST);
 
 
+//htc_aud_nsd++
 #include <linux/atomic.h>
 #include <linux/wait.h>
 #define HTC_NSD_IOCTL_MAGIC 'n'
@@ -149,6 +150,7 @@ typedef struct {
 } audio_nsd_info_def;
 audio_nsd_info_def audio_nsd_info;
 
+// Function start
 void htc_nsd_update(void* payload) {
 	unsigned long flags;
 	nsd_event_node *event_node = NULL;
@@ -161,7 +163,7 @@ void htc_nsd_update(void* payload) {
 	if (audio_nsd_info.state == AUDIO_NSD_OPENED) {
 		wake_lock_timeout(&audio_nsd_info.wakelock, 1*HZ);
 		spin_lock_irqsave(&audio_nsd_info.lock, flags);
-		
+		// get the first node
 		if (list_empty(&audio_nsd_info.free_event_queue)) {
 			spin_unlock_irqrestore(&audio_nsd_info.lock, flags);
 			E("htc_nsd_update, free queue is empty");
@@ -195,12 +197,12 @@ static int htc_nsd_open(struct inode *inode, struct file *file)
 
 	pr_info("%s\n", __func__);
 
-	
+	// prepare the memory and list
 	spin_lock_irqsave(&audio_nsd_info.lock, flags);
 	INIT_LIST_HEAD(&audio_nsd_info.event_queue);
 	INIT_LIST_HEAD(&audio_nsd_info.free_event_queue);
 
-	
+	/* Allocate event buffers. */
 	if (audio_nsd_info.state == AUDIO_NSD_CLOSED) {
 		audio_nsd_info.memory_chunk = kmalloc(NSD_MAX_Q_LEN * sizeof(nsd_event_node), GFP_KERNEL);
 
@@ -232,7 +234,7 @@ static int htc_nsd_release(struct inode *inode, struct file *file)
 	pr_info("%s\n", __func__);
 	spin_lock_irqsave(&audio_nsd_info.lock, flags);
 	if (audio->state == AUDIO_NSD_OPENED) {
-		
+		/* Free memory. */
 		list_for_each_safe(ptr, next, &audio->event_queue) {
 			event_node = list_entry(ptr, nsd_event_node, list);
 			list_del(&event_node->list);
@@ -332,8 +334,10 @@ static int nsd_init(void) {
 	audio_nsd_info.state = AUDIO_NSD_CLOSED;
 	return ret;
 }
+//htc_aud_nsd--
 
 extern unsigned int system_rev;
+//extern unsigned skuid;	//not implemented
 void htc_acoustic_register_spk_amp(enum SPK_AMP_TYPE type,int (*aud_spk_amp_f)(int, int), struct file_operations* ops)
 {
 	mutex_lock(&spk_amp_lock);
@@ -465,6 +469,8 @@ acoustic_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		if (the_ops->get_htc_revision)
 			hw_rev = the_ops->get_htc_revision();
 		else
+			/* return 1 means lastest hw using
+			 * default configuration */
 			hw_rev = 1;
 
 		D("Audio HW revision:  %u\n", hw_rev);
@@ -817,9 +823,9 @@ static int __init acoustic_init(void)
 	notifier.func = htc_acoustic_hsnotify;
 	headset_notifier_register(&notifier);
 
-	
+	//htc_aud_nsd++
 	nsd_init();
-	
+	//htc_aud_nsd--
 	return 0;
 }
 

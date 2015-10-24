@@ -44,7 +44,7 @@
 static int power_key_led_requested;
 static int pre_power_key_status;
 static int pre_power_key_led_status;
-#endif 
+#endif /*POWER_KEY_LED*/
 
 #ifdef CONFIG_POWER_KEY_CLR_RESET
 #include <linux/pl_sensor.h>
@@ -57,8 +57,8 @@ struct wake_lock key_reset_clr_wake_lock;
 struct hrtimer clr_kpd_reset_timer;
 struct hrtimer enable_kpd_s2_timer;
 static int clear_kpdpwr_s2_rst_flag;
-#define KPDPWR_CLR_RESET_TIMER (150 * NSEC_PER_MSEC) 
-#endif 
+#define KPDPWR_CLR_RESET_TIMER (150 * NSEC_PER_MSEC) /* Time out set as 0.15 sec. */
+#endif /* CONFIG_KPDPWR_S2_DVDD_RESET */
 #endif
 #ifdef CONFIG_MFD_MAX8957
 static struct workqueue_struct *ki_queue;
@@ -195,11 +195,11 @@ static struct workqueue_struct *ki_queue;
 #endif
 
 enum {
-	DEBOUNCE_UNSTABLE     = BIT(0),	
+	DEBOUNCE_UNSTABLE     = BIT(0),	/* Got irq, while debouncing */
 	DEBOUNCE_PRESSED      = BIT(1),
 	DEBOUNCE_NOTPRESSED   = BIT(2),
-	DEBOUNCE_WAIT_IRQ     = BIT(3),	
-	DEBOUNCE_POLL         = BIT(4),	
+	DEBOUNCE_WAIT_IRQ     = BIT(3),	/* Stable irq state */
+	DEBOUNCE_POLL         = BIT(4),	/* Stable polling state */
 
 	DEBOUNCE_UNKNOWN =
 		DEBOUNCE_PRESSED | DEBOUNCE_NOTPRESSED,
@@ -239,7 +239,7 @@ static ssize_t kernel_write(struct file *file, const char *buf,
 
 	old_fs = get_fs();
 	set_fs(get_ds());
-	
+	/* The cast to a user pointer is valid due to the set_fs() */
 	res = vfs_write(file, (const char __user *)buf, count, &pos);
 	set_fs(old_fs);
 
@@ -336,7 +336,7 @@ static void power_key_restart_work_func(struct work_struct *dummy)
 	if (gpio_val && pre_power_key_led_status == 1 && !is_rrm1_mode()) {
 		KEY_LOGI("%s, (PWR+VOL_UP) reset", __func__);
 #endif
-		
+		/* clear power key reset data in MISC */
 		set_hw_reason(0);
 #if defined(CONFIG_PM8921_BMS) && (CONFIG_HTC_BATT_8960)
 		pm8921_store_hw_reset_reason(1);
@@ -452,7 +452,7 @@ static void power_key_check_reset_work_func(struct work_struct *dummy)
 #endif
 #ifndef CONFIG_POWER_VOLUP_RESET
 		} else if (board_mfg_mode() == MFG_MODE_NORMAL) {
-			
+			/* Check P/L sensor status */
 			pocket_mode = power_key_check_in_pocket();
 			if (pocket_mode) {
 				printk(KERN_INFO "[KEY] power_key_check_in_pocket = %d\n", pocket_mode);
@@ -464,18 +464,21 @@ static void power_key_check_reset_work_func(struct work_struct *dummy)
 			}
 		} else
 			printk(KERN_INFO "[KEY] Not in normal OS mode, mode=%d\n", board_mfg_mode());
-#else	
+#else	/*POWER_VOLUP_RESET*/
 		} else {
 			printk(KERN_INFO "[KEY] OS Mode=%d\n", board_mfg_mode());
 			for (i = 0; i < aa->keymap_size; i++) {
 				if (aa->keymap[i].code == KEY_VOLUMEUP) {
-					val = gpio_get_value(aa->keymap[i].gpio);
+					val = gpio_get_value(aa->keymap[i].gpio);/*volup, pressed=low*/
+					/*KEY_LOGI("Idx[%d] GPIO_%d:Vol_UP is %s\n",
+						 i, aa->keymap[i].gpio,
+						 (val ? "NOT pressed" : "PRESSED"));*/
 					break;
 				}
 			}
-			if (!val) { 	
+			if (!val) { 	/*pressed*/
 				KEY_LOGI("HW RESET continue");
-			} else {	
+			} else {	/*Released*/
 #ifdef CONFIG_OF
 				aa->dt_clear_hw_reset(aa->clr_gpio);
 #else
@@ -483,7 +486,7 @@ static void power_key_check_reset_work_func(struct work_struct *dummy)
 #endif
 			}
 		}
-#endif	
+#endif	/*POWER_VOLUP_RESET*/
 	} else {
 		KEY_LOGI("[PWR] No reset  clear function\n");
 	}
@@ -500,6 +503,9 @@ static void power_key_clr_check_work_func(struct work_struct *dummy)
 	for (i = 0; i < aa->keymap_size; i++) {
 		if (aa->keymap[i].code == KEY_VOLUMEUP) {
 			val = gpio_get_value(aa->keymap[i].gpio);
+			/*KEY_LOGI("Idx[%d] GPIO_%d:Vol_UP is %s\n",
+					i, aa->keymap[i].gpio,
+					(val ? "NOT pressed" : "PRESSED"));*/
 			if (val) {
 				KEY_LOGI("volUP clear");
 #ifdef CONFIG_OF
@@ -517,7 +523,7 @@ static void power_key_clr_check_work_func(struct work_struct *dummy)
 	val = gpio_get_value(aa->keymap[pwr_idx].gpio);
 
 	if (val) {
-#endif 
+#endif /*POWER_VOLUP_RESET*/
 		if (cancel_delayed_work_sync(&power_key_check_reset_work))
 			KEY_LOGI("[PWR] cancel power key check reset work successfully\n");
 		else
@@ -529,7 +535,7 @@ static void power_key_clr_check_work_func(struct work_struct *dummy)
 			hrtimer_cancel(&clr_kpd_reset_timer);
 		if (hrtimer_is_queued(&enable_kpd_s2_timer))
 			hrtimer_cancel(&enable_kpd_s2_timer);
-#endif 
+#endif /* CONFIG_KPDPWR_S2_DVDD_RESET */
 #ifdef CONFIG_POWER_VOLUP_RESET
 	}
 #endif
@@ -549,7 +555,7 @@ static void handle_power_key_reset(unsigned int code, int value)
 		}
 		for (i = 0; (i < aa->keymap_size && code != KEY_POWER); i++) {
 			if (aa->keymap[i].code == KEY_POWER) {
-				read_val = gpio_get_value(aa->keymap[i].gpio);
+				read_val = gpio_get_value(aa->keymap[i].gpio);/*volup, pressed=low*/
 				KEY_LOGI("Idx[%d] GPIO_%d:PWR is %s\n",
 						i, aa->keymap[i].gpio,
 						(read_val ? "NOT pressed" : "PRESSED" ));
@@ -558,7 +564,7 @@ static void handle_power_key_reset(unsigned int code, int value)
 					clear_kpdpwr_s2_rst_flag = 0;
 					KEY_LOGD("%s: Disable kpdpwr s2 reset clear up [%d]\n",
 								__func__, clear_kpdpwr_s2_rst_flag);
-#endif 
+#endif /* CONFIG_KPDPWR_S2_DVDD_RESET */
 					return;
 				} else {
 					KEY_LOGI("[PWR+VUP] start count for power key led on\n");
@@ -568,14 +574,14 @@ static void handle_power_key_reset(unsigned int code, int value)
 					clear_kpdpwr_s2_rst_flag = 1;
 					KEY_LOGD("%s: Enable kpdpwr s2 reset clear up [%d]\n",
 								__func__, clear_kpdpwr_s2_rst_flag);
-#endif 
+#endif /* CONFIG_KPDPWR_S2_DVDD_RESET */
 					break;
 				}
 			}
 		}
 		for (i = aa->keymap_size; (i > 0  && code != KEY_VOLUMEUP); i--) {
 			if (aa->keymap[i-1].code == KEY_VOLUMEUP) {
-				read_val = gpio_get_value(aa->keymap[i-1].gpio);
+				read_val = gpio_get_value(aa->keymap[i-1].gpio);/*volup, pressed=low*/
 				KEY_LOGI("Idx[%d] GPIO_%d:VOL_UP is %s\n",
 						i-1, aa->keymap[i-1].gpio,
 						(read_val ? "NOT pressed" : "PRESSED" ));
@@ -600,7 +606,7 @@ KEY_PWR:
 						__func__, clear_kpdpwr_s2_rst_flag);
 			hrtimer_start(&clr_kpd_reset_timer,
 				ktime_set(0, KPDPWR_CLR_RESET_TIMER), HRTIMER_MODE_REL);
-#endif 
+#endif /* CONFIG_KPDPWR_S2_DVDD_RESET */
 #ifdef CONFIG_POWER_VOLUP_RESET
 			wake_lock_timeout(&key_reset_clr_wake_lock, msecs_to_jiffies(2000));
 			KEY_LOGI("[PWR] start count for power key check reset\n");
@@ -624,7 +630,7 @@ KEY_PWR:
 				hrtimer_cancel(&clr_kpd_reset_timer);
 			if (hrtimer_is_queued(&enable_kpd_s2_timer))
 				hrtimer_cancel(&enable_kpd_s2_timer);
-#endif 
+#endif /* CONFIG_KPDPWR_S2_DVDD_RESET */
 		}
 	}
 }
@@ -656,8 +662,8 @@ static enum hrtimer_restart enable_kpd_s2_timer_func(struct hrtimer *timer)
 
 	return HRTIMER_NORESTART;
 }
-#endif 
-#endif 
+#endif /* CONFIG_KPDPWR_S2_DVDD_RESET */
+#endif /*POWER_KEY_CLR_RESET*/
 
 #ifndef CONFIG_MFD_MAX8957
 static enum hrtimer_restart gpio_event_input_timer_func(struct hrtimer *timer)
@@ -733,7 +739,7 @@ static enum hrtimer_restart gpio_event_input_timer_func(struct hrtimer *timer)
 			key_state->debounce = DEBOUNCE_NOTPRESSED;
 			continue;
 		}
-		
+		/* key is stable */
 		ds->debounce_count--;
 		if (ds->use_irq)
 			key_state->debounce |= DEBOUNCE_WAIT_IRQ;
@@ -853,7 +859,7 @@ static irqreturn_t gpio_event_input_irq_handler(int irq, void *dev_id)
 	if (!ds->use_irq)
 		return IRQ_HANDLED;
 
-	disable_irq_nosync(irq);	
+	disable_irq_nosync(irq);	//Addd only in 8974
 	key_entry = &ds->info->keymap[keymap_index];
 
 	if (key_entry->code == KEY_POWER && power_key_intr_flag == 0) {
@@ -901,7 +907,7 @@ static irqreturn_t gpio_event_input_irq_handler(int irq, void *dev_id)
 		input_sync(ds->input_devs->dev[key_entry->dev]);
 #endif
 	}
-	enable_irq(irq);		
+	enable_irq(irq);		//Addd only in 8974
 	return IRQ_HANDLED;
 }
 
@@ -1017,7 +1023,7 @@ int gpio_event_input_func(struct gpio_event_input_devs *input_devs,
 				di->clear_hw_reset();
 #endif
 		}
-#endif 
+#endif /*POWER_VOLUP_RESET*/
 
 		if (ktime_to_ns(di->poll_time) <= 0)
 			di->poll_time = ktime_set(0, 20 * NSEC_PER_MSEC);
@@ -1120,7 +1126,7 @@ int gpio_event_input_func(struct gpio_event_input_devs *input_devs,
 		clr_kpd_reset_timer.function = clr_kpd_rst_timer_func;
 		hrtimer_init(&enable_kpd_s2_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 		enable_kpd_s2_timer.function = enable_kpd_s2_timer_func;
-#endif 
+#endif /* CONFIG_KPDPWR_S2_DVDD_RESET && CONFIG_POWER_KEY_CLR_RESET */
 		spin_unlock_irqrestore(&ds->irq_lock, irqflags);
 		return 0;
 	}

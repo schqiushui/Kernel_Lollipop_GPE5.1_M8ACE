@@ -137,7 +137,7 @@ static int32_t qdsp_apr_callback(struct apr_client_data *data, void *priv)
 
 static int32_t qdsp_dummy_apr_callback(struct apr_client_data *data, void *priv)
 {
-	
+	/* Do Nothing */
 	return 0;
 }
 
@@ -524,6 +524,12 @@ static int voice_svc_open(struct inode *inode, struct file *file)
 
 	file->private_data = (void*)prtd;
 
+	/* Current APR implementation doesn't support session based
+	 * multiple service registrations. The apr_deregister()
+	 * function sets the destination and client IDs to zero, if
+	 * deregister is called for a single service instance.
+	 * To avoid this, register for additional services.
+	 */
 	if (!reg_dummy_sess) {
 		voice_svc_dummy_reg();
 		reg_dummy_sess = 1;

@@ -23,6 +23,7 @@
 
 #define FLASH_NAME "camera-led-flash"
 
+/*#define CONFIG_MSMB_CAMERA_DEBUG*/
 #undef CDBG
 #ifdef CONFIG_MSMB_CAMERA_DEBUG
 #define CDBG(fmt, args...) pr_err(fmt, ##args)
@@ -345,7 +346,7 @@ static int32_t msm_led_get_dt_data(struct device_node *of_node,
 				&fctrl->led_trigger[i]);
 		}
 
-	} else { 
+	} else { /*Handle LED Flash Ctrl by GPIO*/
 		power_info->gpio_conf =
 			 kzalloc(sizeof(struct msm_camera_gpio_conf),
 				 GFP_KERNEL);
@@ -489,10 +490,10 @@ int msm_flash_i2c_probe(struct i2c_client *client,
 	fctrl = (struct msm_led_flash_ctrl_t *)(id->driver_data);
 	if (fctrl->flash_i2c_client)
 		fctrl->flash_i2c_client->client = client;
-	
+	/* Set device type as I2C */
 	fctrl->flash_device_type = MSM_CAMERA_I2C_DEVICE;
 
-	
+	/* Assign name for sub device */
 	snprintf(fctrl->msm_sd.sd.name, sizeof(fctrl->msm_sd.sd.name),
 		"%s", id->name);
 

@@ -68,6 +68,7 @@ struct msm_cpp_timer_t {
 
 struct msm_cpp_timer_t cpp_timer;
 
+/* dump the frame command before writing to the hardware */
 #define  MSM_CPP_DUMP_FRM_CMD 0
 
 static int msm_cpp_buffer_ops(struct cpp_device *cpp_dev,
@@ -287,10 +288,10 @@ QUEUE_BUFF_ERROR2:
 	ion_unmap_iommu(cpp_dev->client, buff->map_info.ion_handle,
 		cpp_dev->domain_num, 0);
 QUEUE_BUFF_ERROR1:
-	
-	
+	//HTC_START
+	//if the client and handles are valid, free them.
 	if (!IS_ERR_OR_NULL(cpp_dev->client) && !IS_ERR_OR_NULL(buff->map_info.ion_handle))
-	
+	//HTC_END
 		ion_free(cpp_dev->client, buff->map_info.ion_handle);
 	buff->map_info.ion_handle = NULL;
 	kzfree(buff);
@@ -627,7 +628,7 @@ void msm_cpp_do_tasklet(unsigned long data)
 				msg_id = tx_fifo[i+2];
 				if (msg_id == MSM_CPP_MSG_ID_FRAME_ACK) {
 					CPP_DBG("Frame done!!\n");
-					
+					/* delete CPP timer */
 					CPP_DBG("delete timer.\n");
 					msm_cpp_clear_timer(cpp_dev);
 					msm_cpp_notify_frame_done(cpp_dev,
@@ -819,7 +820,7 @@ bus_scale_register_failed:
 static void cpp_release_hardware(struct cpp_device *cpp_dev)
 {
 	int32_t rc;
-	struct msm_cpp_timer_t *timer = NULL;   
+	struct msm_cpp_timer_t *timer = NULL;   // HTC_MODIFY
 	if (cpp_dev->state != CPP_STATE_BOOT) {
 		rc = msm_cpp_buffer_ops(cpp_dev,
 			VIDIOC_MSM_BUF_MNGR_DEINIT, NULL);
@@ -830,15 +831,15 @@ static void cpp_release_hardware(struct cpp_device *cpp_dev)
 		free_irq(cpp_dev->irq->start, cpp_dev);
 		tasklet_kill(&cpp_dev->cpp_tasklet);
 		atomic_set(&cpp_dev->irq_cnt, 0);
-		
-		
-		
+		// HTC start
+		// Cleanup timer and flush workqueue.
+		// Then we can safely to unmap io.
 		timer = &cpp_timer;
 		atomic_set(&timer->used, 0);
 		flush_workqueue(cpp_dev->timer_wq);
 		del_timer(&timer->cpp_timer);
 		timer->data.processed_frame = NULL;
-		
+		// HTC end
 	}
 	msm_cpp_delete_buff_queue(cpp_dev);
 	iounmap(cpp_dev->base);
@@ -880,12 +881,12 @@ static void cpp_load_fw(struct cpp_device *cpp_dev, char *fw_name_bin)
 		}
 		if (NULL != fw)
 			ptr_bin = (uint32_t *)fw->data;
-		
+		/* HTC_START , add to fix Klocwork issue */
 		else {
 			pr_err("%s: fw is NULL\n", __func__);
 			return;
 		}
-		
+		/* HTC_END */
 
 		msm_camera_io_w(0x1, cpp_dev->base +
 					 MSM_CPP_MICRO_BOOT_START);
@@ -893,7 +894,7 @@ static void cpp_load_fw(struct cpp_device *cpp_dev, char *fw_name_bin)
 		msm_camera_io_w(0xFFFFFFFF, cpp_dev->base +
 			MSM_CPP_MICRO_IRQGEN_CLR);
 
-		
+		/*Start firmware loading*/
 		msm_cpp_write(MSM_CPP_CMD_FW_LOAD, cpp_dev->base);
 		if (fw)
 			msm_cpp_write(fw->size, cpp_dev->base);
@@ -914,7 +915,7 @@ static void cpp_load_fw(struct cpp_device *cpp_dev, char *fw_name_bin)
 		msm_cpp_poll(cpp_dev->base, MSM_CPP_MSG_ID_CMD);
 	}
 
-	
+	/*Trigger MC to jump to start address*/
 	msm_cpp_write(MSM_CPP_CMD_EXEC_JUMP, cpp_dev->base);
 	msm_cpp_write(MSM_CPP_JUMP_ADDRESS, cpp_dev->base);
 
@@ -923,12 +924,12 @@ static void cpp_load_fw(struct cpp_device *cpp_dev, char *fw_name_bin)
 	msm_cpp_poll(cpp_dev->base, MSM_CPP_MSG_ID_JUMP_ACK);
 	msm_cpp_poll(cpp_dev->base, MSM_CPP_MSG_ID_TRAILER);
 
-	
+	/*Get Bootloader Version*/
 	msm_cpp_write(MSM_CPP_CMD_GET_BOOTLOADER_VER, cpp_dev->base);
 	pr_info("MC Bootloader Version: 0x%x\n",
 		   msm_cpp_read(cpp_dev->base));
 
-	
+	/*Get Firmware Version*/
 	msm_cpp_write(MSM_CPP_CMD_GET_FW_VER, cpp_dev->base);
 	msm_cpp_write(MSM_CPP_MSG_ID_CMD, cpp_dev->base);
 	msm_cpp_write(0x1, cpp_dev->base);
@@ -941,7 +942,9 @@ static void cpp_load_fw(struct cpp_device *cpp_dev, char *fw_name_bin)
 	pr_info("CPP FW Version: 0x%x\n", msm_cpp_read(cpp_dev->base));
 	msm_cpp_poll(cpp_dev->base, MSM_CPP_MSG_ID_TRAILER);
 
-	
+	/*Disable MC clock*/
+	/*msm_camera_io_w(0x0, cpp_dev->base +
+					   MSM_CPP_MICRO_CLKEN_CTL);*/
 }
 
 static int cpp_open_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
@@ -972,7 +975,7 @@ static int cpp_open_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 
 	CPP_DBG("open %d %p\n", i, &fh->vfh);
 	cpp_dev->cpp_open_cnt++;
-	pr_info("%s: open_cnt:%d\n", __func__, cpp_dev->cpp_open_cnt);   
+	pr_info("%s: open_cnt:%d\n", __func__, cpp_dev->cpp_open_cnt);   // HTC
 	if (cpp_dev->cpp_open_cnt == 1) {
 		cpp_init_hardware(cpp_dev);
 		iommu_attach_device(cpp_dev->domain, cpp_dev->iommu_ctx);
@@ -1019,7 +1022,7 @@ static int cpp_close_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	}
 
 	cpp_dev->cpp_open_cnt--;
-	pr_info("%s: open_cnt:%d\n", __func__, cpp_dev->cpp_open_cnt);   
+	pr_info("%s: open_cnt:%d\n", __func__, cpp_dev->cpp_open_cnt);   // HTC
 	if (cpp_dev->cpp_open_cnt == 0) {
 		pr_debug("irq_status: 0x%x\n",
 			msm_camera_io_r(cpp_dev->cpp_hw_base + 0x4));
@@ -1078,7 +1081,7 @@ static int msm_cpp_buffer_ops(struct cpp_device *cpp_dev,
 	rc = v4l2_subdev_call(cpp_dev->buf_mgr_subdev, core, ioctl,
 		buff_mgr_ops, buff_mgr_info);
 	if (rc < 0)
-		pr_err("%s: line %d rc = %d\n", __func__, __LINE__, rc); 
+		pr_err("%s: line %d rc = %d\n", __func__, __LINE__, rc); /*HTC_MOD*/
 	return rc;
 }
 
@@ -1258,7 +1261,7 @@ static int msm_cpp_send_frame_to_hardware(struct cpp_device *cpp_dev,
 
 		cpp_timer.data.processed_frame = process_frame;
 		atomic_set(&cpp_timer.used, 1);
-		
+		/* install timer for cpp timeout */
 		CPP_DBG("Installing cpp_timer\n");
 		setup_timer(&cpp_timer.cpp_timer,
 			cpp_timer_callback, (unsigned long)&cpp_timer);
@@ -1312,7 +1315,7 @@ static int msm_cpp_cfg(struct cpp_device *cpp_dev,
 
 	int i = 0;
 	if (!new_frame) {
-		pr_err("%s:%d Insufficient memory. return\n", __func__, __LINE__); 
+		pr_err("%s:%d Insufficient memory. return\n", __func__, __LINE__); /*HTC_MOD*/
 		return -ENOMEM;
 	}
 
@@ -1335,7 +1338,7 @@ static int msm_cpp_cfg(struct cpp_device *cpp_dev,
 	cpp_frame_msg = kzalloc(sizeof(uint32_t)*new_frame->msg_len,
 		GFP_KERNEL);
 	if (!cpp_frame_msg) {
-		pr_err("%s:%d Insufficient memory. return", __func__, __LINE__); 
+		pr_err("%s:%d Insufficient memory. return", __func__, __LINE__); /*HTC_MOD*/
 		rc = -ENOMEM;
 		goto ERROR1;
 	}
@@ -1356,7 +1359,7 @@ static int msm_cpp_cfg(struct cpp_device *cpp_dev,
 		((new_frame->input_buffer_info.identity >> 16) & 0xFFFF),
 		(new_frame->input_buffer_info.identity & 0xFFFF), &in_fd);
 	if (!in_phyaddr) {
-		pr_err("%s:%d error gettting input physical address\n", __func__, __LINE__); 
+		pr_err("%s:%d error gettting input physical address\n", __func__, __LINE__); /*HTC_MOD*/
 		rc = -EINVAL;
 		goto ERROR2;
 	}
@@ -1368,7 +1371,7 @@ static int msm_cpp_cfg(struct cpp_device *cpp_dev,
 		&buff_mgr_info);
 	if (rc < 0) {
 		rc = -EAGAIN;
-		pr_err("%s:%d error getting buffer rc:%d\n", __func__, __LINE__, rc); 
+		pr_err("%s:%d error getting buffer rc:%d\n", __func__, __LINE__, rc); /*HTC_MOD*/
 		goto ERROR2;
 	}
 	new_frame->output_buffer_info[0].index = buff_mgr_info.index;
@@ -1378,13 +1381,13 @@ static int msm_cpp_cfg(struct cpp_device *cpp_dev,
 		(new_frame->identity & 0xFFFF),
 		&new_frame->output_buffer_info[0].fd);
 	if (!out_phyaddr0) {
-		pr_err("%s:%d error gettting output physical address\n", __func__, __LINE__); 
+		pr_err("%s:%d error gettting output physical address\n", __func__, __LINE__); /*HTC_MOD*/
 		rc = -EINVAL;
 		goto ERROR3;
 	}
 	out_phyaddr1 = out_phyaddr0;
 
-	
+	/* get buffer for duplicate output */
 	if (new_frame->duplicate_output) {
 		CPP_DBG("duplication enabled, dup_id=0x%x",
 			new_frame->duplicate_identity);
@@ -1399,7 +1402,7 @@ static int msm_cpp_cfg(struct cpp_device *cpp_dev,
 			&dup_buff_mgr_info);
 		if (rc < 0) {
 			rc = -EAGAIN;
-			pr_err("%s:%d error getting buffer rc:%d\n", __func__, __LINE__, rc); 
+			pr_err("%s:%d error getting buffer rc:%d\n", __func__, __LINE__, rc); /*HTC_MOD*/
 			goto ERROR3;
 		}
 		new_frame->output_buffer_info[1].index =
@@ -1410,13 +1413,13 @@ static int msm_cpp_cfg(struct cpp_device *cpp_dev,
 			(new_frame->duplicate_identity & 0xFFFF),
 			&new_frame->output_buffer_info[1].fd);
 		if (!out_phyaddr1) {
-			pr_err("%s:%d error gettting output physical address\n", __func__, __LINE__); 
+			pr_err("%s:%d error gettting output physical address\n", __func__, __LINE__); /*HTC_MOD*/
 			rc = -EINVAL;
 			msm_cpp_buffer_ops(cpp_dev, VIDIOC_MSM_BUF_MNGR_PUT_BUF,
 				&dup_buff_mgr_info);
 			goto ERROR3;
 		}
-		
+		/* set duplicate enable bit */
 		cpp_frame_msg[5] |= 0x1;
 	}
 
@@ -1445,7 +1448,7 @@ static int msm_cpp_cfg(struct cpp_device *cpp_dev,
 
 	frame_qcmd = kzalloc(sizeof(struct msm_queue_cmd), GFP_KERNEL);
 	if (!frame_qcmd) {
-		pr_err("%s:%d Insufficient memory. return\n", __func__, __LINE__); 
+		pr_err("%s:%d Insufficient memory. return\n", __func__, __LINE__); /*HTC_MOD*/
 		rc = -ENOMEM;
 		goto ERROR3;
 	}
@@ -1745,13 +1748,13 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 		struct msm_cpp_frame_info_t *process_frame;
 		event_qcmd = msm_dequeue(queue, list_eventdata);
 
-		
+		/* HTC_START , add to fix Klocwork issue */
 		if (event_qcmd == NULL) {
 			pr_err("%s: event_qcmd is NULL\n", __func__);
 			mutex_unlock(&cpp_dev->mutex);
 			return -EINVAL;
 		}
-		
+		/* HTC_END */
 
 		if(event_qcmd) {
 			process_frame = event_qcmd->command;

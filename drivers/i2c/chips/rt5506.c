@@ -36,10 +36,12 @@
 #include <linux/of_gpio.h>
 #include <mach/htc_acoustic_alsa.h>
 
+//htc audio ++
 #undef pr_info
 #undef pr_err
 #define pr_info(fmt, ...) pr_aud_info(fmt, ##__VA_ARGS__)
 #define pr_err(fmt, ...) pr_aud_err(fmt, ##__VA_ARGS__)
+//htc audio --
 
 
 #define DEBUG (1)
@@ -103,6 +105,7 @@ struct rt5506_config RT5506_AMP_MUTE = {1,{{0x1,0xC7},}};;
 struct rt5506_config RT5506_AMP_OFF = {1,{{0x0,0x1},}};
 
 static int rt5506_write_reg(u8 reg, u8 val);
+//static int rt5506_i2c_read(char *rxData, int length);
 static void hs_imp_detec_func(struct work_struct *work);
 static int rt5506_i2c_read_addr(unsigned char *rxData, unsigned char addr);
 static int rt5506_i2c_write(struct rt5506_reg_data *txData, int length);
@@ -229,7 +232,7 @@ static int rt5506_headset_detect(void *private_data, int on)
 		pr_info("%s: headset in --\n",__func__);
 		mutex_unlock(&rt5506_query.mlock);
 		mutex_unlock(&rt5506_query.gpiolock);
-		
+		//inited = 0;
 		queue_delayed_work(hs_wq,&rt5506_query.hs_imp_detec_work,msecs_to_jiffies(5));
 		pr_info("%s: headset in --2\n",__func__);
 
@@ -348,8 +351,8 @@ static int rt5506_i2c_write(struct rt5506_reg_data *txData, int length)
 		},
 	};
 	for (i = 0; i < length; i++) {
-		
-		
+		//if (i == 2)  /* According to rt5506 Spec */
+		//	mdelay(1);
 		buf[0] = txData[i].addr;
 		buf[1] = txData[i].val;
 
@@ -542,7 +545,7 @@ static void hs_imp_detec_func(struct work_struct *work)
 		om = (temp[0] & 0xe) >> 1;
 
 		if(r_channel == 0) {
-			
+			//mono headset
 			hsom = HEADSET_MONO;
 		} else {
 
@@ -614,7 +617,7 @@ static void hs_imp_detec_func(struct work_struct *work)
 		hs->rt5506_status = STATUS_SUSPEND;
 
 #ifdef CONFIG_HTC_HEADSET_DET_DEBOUNCE
-       
+       //warkaround for water proof
        if(hs->hs_qstatus == QUERY_FINISH) {
 
                if(r_channel > 0x88)
@@ -652,7 +655,7 @@ static void set_amp(int on, struct rt5506_config *i2c_command)
 		if(rt5506_query.rt5506_status != STATUS_PLAYBACK) {
 
 			mdelay(1);
-			
+			//start state machine and disable noise gate
 			if(high_imp)
 				rt5506_write_reg(0xb1,0x80);
 
@@ -703,7 +706,7 @@ static int set_rt5506_amp(int on, int dsp)
 		rt5506_query.action_on = 0;
 	cancel_delayed_work_sync(&rt5506_query.gpio_off_work);
 	cancel_delayed_work_sync(&rt5506_query.volume_ramp_work);
-	
+	//flush_work_sync(&rt5506_query.volume_ramp_work.work);
 	mutex_lock(&rt5506_query.gpiolock);
 
 	if(on) {
@@ -817,7 +820,7 @@ static long rt5506_ioctl(struct file *file, unsigned int cmd,
 
 		pr_info("%s: update rt5506 i2c commands #%d success.\n",
 				__func__, rt5506_config_data.mode_num);
-		
+		/* update default paramater from csv*/
 		update_amp_parameter(PLAYBACK_MODE_OFF);
 		update_amp_parameter(AMP_MUTE);
 		update_amp_parameter(AMP_INIT);
@@ -964,7 +967,7 @@ int rt5506_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	this_client = client;
 
-	if(1) {
+	if(1/*pdata->gpio_rt5506_enable*/) {
 		unsigned char temp[2];
 
 		err = gpio_request(pdata->gpio_rt5506_enable, "hp_en_rt5506");
@@ -992,12 +995,12 @@ int rt5506_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		mdelay(5);
 		rt5506_write_reg(0x0,0xc0);
 		rt5506_write_reg(0x81,0x30);
-		
+		//rt5506_write_reg(0x87,0xf6);
 		rt5506_write_reg(0x90,0xd0);
 		rt5506_write_reg(0x93,0x9d);
 		rt5506_write_reg(0x95,0x7b);
 		rt5506_write_reg(0xa4,0x52);
-		
+		//rt5506_write_reg(0x96,0xae);
 		rt5506_write_reg(0x97,0x00);
 		rt5506_write_reg(0x98,0x22);
 		rt5506_write_reg(0x99,0x33);
@@ -1021,6 +1024,12 @@ int rt5506_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 		gpio_set_value(pdata->gpio_rt5506_enable, 0);
 
+		/*if(!err)
+			gpio_free(pdata->gpio_rt5506_enable);
+
+		if(ret < 0) {
+			pr_err("%s: gpio %d off error %d\n", __func__,pdata->gpio_rt5506_enable,ret);
+		}*/
 	}
 
 	if(rt5506Connect) {
@@ -1040,7 +1049,7 @@ int rt5506_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		gpio_wq = create_workqueue("rt5506_gpio_off");
 		INIT_DELAYED_WORK(&rt5506_query.gpio_off_work, hs_imp_gpio_off);
 		rt5506_register_hs_notification();
-		
+		//queue_delayed_work(ramp_wq, &rt5506_query.volume_ramp_work, msecs_to_jiffies(30000));
 
 	}
 	return 0;

@@ -44,7 +44,7 @@
 #define MSM_ISP32_TOTAL_WM_UB 792
 
 static struct msm_cam_clk_info msm_vfe32_1_clk_info[] = {
-	
+	/*vfe32 clock info for B-family: 8610 */
 	{"vfe_clk_src", 266670000},
 	{"vfe_clk", -1},
 	{"vfe_ahb_clk", -1},
@@ -53,7 +53,7 @@ static struct msm_cam_clk_info msm_vfe32_1_clk_info[] = {
 };
 
 static struct msm_cam_clk_info msm_vfe32_2_clk_info[] = {
-	
+	/*vfe32 clock info for A-family: 8960 */
 	{"vfe_clk", 266667000},
 	{"vfe_pclk", -1},
 	{"csi_vfe_clk", -1},
@@ -147,9 +147,9 @@ static void msm_vfe32_release_hardware(struct vfe_device *vfe_dev)
 static void msm_vfe32_init_hardware_reg(struct vfe_device *vfe_dev)
 {
 	uint32_t wm_base, i = 0;
-	
+	/* CGC_OVERRIDE */
 	msm_camera_io_w(0x07FFFFFF, vfe_dev->vfe_base + 0xC);
-	
+	/* BUS_CFG */
 	msm_camera_io_w(0x00000009, vfe_dev->vfe_base + 0x3C);
 	msm_camera_io_w(0x01000025, vfe_dev->vfe_base + 0x1C);
 	msm_camera_io_w_mb(0x1CFFFFFF, vfe_dev->vfe_base + 0x20);
@@ -368,16 +368,16 @@ static void msm_vfe32_reg_update(
 
 static uint32_t msm_vfe32_reset_values[ISP_RST_MAX] =
 {
-	0x3FF, 
-	0x3EF 
+	0x3FF, /* ISP_RST_HARD reset everything */
+	0x3EF /* ISP_RST_SOFT same as HARD RESET */
 };
 
 static long msm_vfe32_reset_hardware(struct vfe_device *vfe_dev ,
 				enum msm_isp_reset_type reset_type, uint32_t blocking)
 {
-	
+	/*HTC_START*/
 	int rc = 0;
-	
+	/*HTC_END*/
 	uint32_t rst_val;
 	if (reset_type >= ISP_RST_MAX) {
 		pr_err("%s: Error Invalid parameter\n", __func__);
@@ -401,10 +401,10 @@ static void msm_vfe32_axi_reload_wm(
 	struct vfe_device *vfe_dev, uint32_t reload_mask)
 {
 	if (!vfe_dev->pdev->dev.of_node) {
-		
+		/*vfe32 A-family: 8960*/
 		msm_camera_io_w_mb(reload_mask, vfe_dev->vfe_base + 0x38);
 	} else {
-		
+		/*vfe32 B-family: 8610*/
 		msm_camera_io_w(0x0, vfe_dev->vfe_base + 0x28);
 		msm_camera_io_w(0x1C800000, vfe_dev->vfe_base + 0x20);
 		msm_camera_io_w_mb(0x1, vfe_dev->vfe_base + 0x18);
@@ -692,7 +692,7 @@ static void msm_vfe32_axi_cfg_wm_reg(
 	uint32_t wm_base = VFE32_WM_BASE(stream_info->wm[plane_idx]);
 
 	if (!stream_info->frame_based) {
-		
+		/*WR_IMAGE_SIZE*/
 		val =
 			((msm_isp_cal_word_per_line(
 			stream_info->output_format,
@@ -702,7 +702,7 @@ static void msm_vfe32_axi_cfg_wm_reg(
 			output_height - 1);
 		msm_camera_io_w(val, vfe_dev->vfe_base + wm_base + 0x10);
 
-		
+		/*WR_BUFFER_CFG*/
 		val =
 			msm_isp_cal_word_per_line(
 			stream_info->output_format,
@@ -731,11 +731,11 @@ static void msm_vfe32_axi_clear_wm_reg(
 {
 	uint32_t val = 0;
 	uint32_t wm_base = VFE32_WM_BASE(stream_info->wm[plane_idx]);
-	
+	/* FRAME BASED */
 	msm_camera_io_w(val, vfe_dev->vfe_base + wm_base);
-	
+	/*WR_IMAGE_SIZE*/
 	msm_camera_io_w(val, vfe_dev->vfe_base + wm_base + 0x10);
-	
+	/*WR_BUFFER_CFG*/
 	msm_camera_io_w(val, vfe_dev->vfe_base + wm_base + 0x14);
 	return;
 }
@@ -755,20 +755,20 @@ static void msm_vfe32_axi_cfg_wm_xbar_reg(
 	case PIX_VIEWFINDER: {
 		if (plane_cfg->output_plane_format != CRCB_PLANE &&
 			plane_cfg->output_plane_format != CBCR_PLANE) {
-			
+			/*SINGLE_STREAM_SEL*/
 			xbar_cfg |= plane_cfg->output_plane_format << 5;
 		} else {
 			switch (stream_info->output_format) {
 			case V4L2_PIX_FMT_NV12:
 			case V4L2_PIX_FMT_NV14:
 			case V4L2_PIX_FMT_NV16:
-				xbar_cfg |= 0x3 << 3; 
+				xbar_cfg |= 0x3 << 3; /*PAIR_STREAM_SWAP_CTRL*/
 				break;
 			}
-			xbar_cfg |= BIT(1); 
+			xbar_cfg |= BIT(1); /*PAIR_STREAM_EN*/
 		}
 		if (stream_info->stream_src == PIX_VIEWFINDER)
-			xbar_cfg |= 0x1; 
+			xbar_cfg |= 0x1; /*VIEW_STREAM_EN*/
 		break;
 	}
 	case CAMIF_RAW:
@@ -897,7 +897,7 @@ static long msm_vfe32_axi_halt(struct vfe_device *vfe_dev, uint32_t blocking)
 	msm_camera_io_w_mb(0, vfe_dev->vfe_base + 0x1D8);
 	halt_mask = msm_camera_io_r(vfe_dev->vfe_base + 0x20);
 	halt_mask &= 0xFEFFFFFF;
-	
+	/* Disable AXI IRQ */
 	msm_camera_io_w_mb(halt_mask, vfe_dev->vfe_base + 0x20);
 	return 0;
 }
@@ -974,14 +974,14 @@ static void msm_vfe32_stats_clear_wm_irq_mask(struct vfe_device *vfe_dev,
 static void msm_vfe32_stats_cfg_wm_reg(struct vfe_device *vfe_dev,
 	struct msm_vfe_stats_stream *stream_info)
 {
-	
+	/*Nothing to configure for VFE3.x*/
 	return;
 }
 
 static void msm_vfe32_stats_clear_wm_reg(struct vfe_device *vfe_dev,
 	struct msm_vfe_stats_stream *stream_info)
 {
-	
+	/*Nothing to configure for VFE3.x*/
 	return;
 }
 
@@ -990,13 +990,13 @@ static void msm_vfe32_stats_cfg_ub(struct vfe_device *vfe_dev)
 	int i;
 	uint32_t ub_offset = VFE32_UB_SIZE;
 	uint32_t ub_size[VFE32_NUM_STATS_TYPE] = {
-		107, 
-		92, 
-		2, 
-		7,  
-		16, 
-		2, 
-		7, 
+		107, /*MSM_ISP_STATS_BG*/
+		92, /*MSM_ISP_STATS_BF*/
+		2, /*MSM_ISP_STATS_AWB*/
+		7,  /*MSM_ISP_STATS_RS*/
+		16, /*MSM_ISP_STATS_CS*/
+		2, /*MSM_ISP_STATS_IHIST*/
+		7, /*MSM_ISP_STATS_BHIST*/
 	};
 
 	for (i = 0; i < VFE32_NUM_STATS_TYPE; i++) {

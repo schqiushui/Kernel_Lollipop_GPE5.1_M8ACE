@@ -30,13 +30,16 @@
 #include <linux/debugfs.h>
 #include <linux/gpio.h>
 #include <linux/module.h>
+//#include <linux/mfd/pm8xxx/pm8921.h>
 #include <linux/of_gpio.h>
 #include <mach/htc_acoustic_alsa.h>
 
+//htc audio ++
 #undef pr_info
 #undef pr_err
 #define pr_info(fmt, ...) pr_aud_info(fmt, ##__VA_ARGS__)
 #define pr_err(fmt, ...) pr_aud_err(fmt, ##__VA_ARGS__)
+//htc audio --
 
 #define TPA9887_IOCTL_MAGIC 'a'
 #define TPA9887_WRITE_CONFIG	_IOW(TPA9887_IOCTL_MAGIC, 0x01, unsigned int)
@@ -118,7 +121,7 @@ static ssize_t codec_debug_write(struct file *filp,
 	lbuf[cnt] = '\0';
 
 	if (!strcmp(access_str, "poke")) {
-		
+		/* write */
 		rc = get_parameters(lbuf, param, 2);
 		if ((param[0] <= 0xFF) && (param[1] <= 0xFF) &&
 			(rc == 0)) {
@@ -128,7 +131,7 @@ static ssize_t codec_debug_write(struct file *filp,
 		} else
 			rc = -EINVAL;
 	} else if (!strcmp(access_str, "peek")) {
-		
+		/* read */
 		rc = get_parameters(lbuf, param, 1);
 		if ((param[0] <= 0xFF) && (rc == 0)) {
 			reg_idx[0] = param[0];
@@ -257,8 +260,8 @@ int tfa9887_l_read(char *rxData, int length) {
 int set_tfa9887l_spkamp(int en, int dsp_mode)
 {
 	int i =0;
-        
-        
+        //unsigned char write_reg[1] = {0x03};
+        //unsigned char write_data[2] = {0, 0};
         unsigned char mute_reg[1] = {0x06};
 	unsigned char mute_data[3] = {0, 0, 0};
         unsigned char power_reg[1] = {0x09};
@@ -268,26 +271,26 @@ int set_tfa9887l_spkamp(int en, int dsp_mode)
 	mutex_lock(&spk_ampl_lock);
 	if (en && !last_spkampl_state) {
 		last_spkampl_state = 1;
-		
+		/* NXP CF DSP Bypass mode */
 		if (dspl_enabled == 0) {
 			for (i=0; i <7 ; i++)
 				tfa9887_i2c_write(cf_dspl_bypass[i], 3);
 		} else {
-			
-			
+			//tfa9887_i2c_write(write_reg, 1);
+			//tfa9887_i2c_read(write_data, 2);
 			tfa9887_i2c_write(power_reg, 1);
 			tfa9887_i2c_read(power_data + 1, 2);
 			tfa9887_i2c_write(mute_reg, 1);
 			tfa9887_i2c_read(mute_data + 1, 2);
 			mute_data[0] = 0x6;
-			mute_data[2] &= 0xdf;  
+			mute_data[2] &= 0xdf;  //bit 5 dn = un=mute
 			power_data[0] = 0x9;
-			power_data[2] &= 0xfe; 
-			
+			power_data[2] &= 0xfe; //bit 0 dn = power up
+			//Tfa9887_PowerDown(0)
 			tfa9887_i2c_write(power_data, 3);
-			
+			//Tfa9887_SetMute(Tfa9887_Mute_off)
 			tfa9887_i2c_write(mute_data, 3);
-			power_data[2] |= 0x8;  
+			power_data[2] |= 0x8;  //bit 3 Up = AMP on
 			tfa9887_i2c_write(power_data, 3);
 		}
 	} else if (!en && last_spkampl_state) {
@@ -295,24 +298,24 @@ int set_tfa9887l_spkamp(int en, int dsp_mode)
 		if (dspl_enabled == 0) {
 			tfa9887_i2c_write(ampl_off[0], 3);
 		} else {
-			
-			
+			//tfa9887_i2c_write(write_reg, 1);
+			//tfa9887_i2c_read(write_data, 2);
 			tfa9887_i2c_write(power_reg, 1);
 			tfa9887_i2c_read(power_data + 1, 2);
 			tfa9887_i2c_write(mute_reg, 1);
 			tfa9887_i2c_read(mute_data + 1, 2);
 			mute_data[0] = 0x6;
-			mute_data[2] |= 0x20; 
-			
+			mute_data[2] |= 0x20; //bit 5 up = mute
+			//Tfa9887_SetMute(Tfa9887_Mute_Amplifier)
 			tfa9887_i2c_write(mute_data, 3);
 			tfa9887_i2c_write(power_reg, 1);
 			tfa9887_i2c_read(power_data + 1, 2);
 			power_data[0] = 0x9;
-			power_data[2] &= 0xf7;  
+			power_data[2] &= 0xf7;  //bit 3 down = AMP off
 			tfa9887_i2c_write(power_data, 3);
-			
-			
-			power_data[2] |= 0x1;  
+			//msleep(10);
+			//Tfa9887_PowerDown(1)
+			power_data[2] |= 0x1;  //bit 0 up = power down
 			tfa9887_i2c_write(power_data, 3);
 		}
 	}
@@ -408,7 +411,7 @@ static long tfa9887l_ioctl(struct file *file, unsigned int cmd,
 		}
 
 		len = reg_value[0];
-		
+		//dsp_enabled = reg_value[1];
 		pr_debug("TPA9887_KLOCK2 %d\n", reg_value[1]);
 		if (reg_value[1])
 		   mutex_lock(&spk_ampl_lock);

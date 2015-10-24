@@ -26,6 +26,7 @@
 
 #define MAX_SESSIONS 2
 
+/* wait for at most 2 vsync for lowest refresh rate (24hz) */
 #define KOFF_TIMEOUT msecs_to_jiffies(84)
 
 #define STOP_TIMEOUT(hz) msecs_to_jiffies((1000 / hz) * (VSYNC_EXPIRE_TICK + 2))
@@ -51,12 +52,12 @@ struct mdss_mdp_cmd_ctx {
 	struct work_struct post_commit_cmd_work;
 	atomic_t pp_done_cnt;
 
-	
+	/* te config */
 	u8 tear_check;
-	u16 height;	
-	u16 vporch;	
+	u16 height;	/* panel height */
+	u16 vporch;	/* vertical porches */
 	u16 start_threshold;
-	u32 vclk_line;	
+	u32 vclk_line;	/* vsync clock per line */
 	struct mdss_panel_recovery recovery;
 
 	int logging;
@@ -67,7 +68,7 @@ struct mdss_mdp_cmd_ctx mdss_mdp_cmd_ctx_list[MAX_SESSIONS];
 static inline u32 mdss_mdp_cmd_line_count(struct mdss_mdp_ctl *ctl)
 {
 	struct mdss_mdp_mixer *mixer;
-	u32 cnt = 0xffff;	
+	u32 cnt = 0xffff;	/* init it to an invalid value */
 	u32 init;
 	u32 height;
 
@@ -96,7 +97,7 @@ static inline u32 mdss_mdp_cmd_line_count(struct mdss_mdp_ctl *ctl)
 	cnt = mdss_mdp_pingpong_read
 		(mixer, MDSS_MDP_REG_PP_INT_COUNT_VAL) & 0xffff;
 
-	if (cnt < init)		
+	if (cnt < init)		/* wrap around happened at height */
 		cnt += (height - init);
 	else
 		cnt -= init;
@@ -108,19 +109,27 @@ exit:
 	return cnt;
 }
 
+/*
+ * TE configuration:
+ * dsi byte clock calculated base on 70 fps
+ * around 14 ms to complete a kickoff cycle if te disabled
+ * vclk_line base on 60 fps
+ * write is faster than read
+ * init == start == rdptr
+ */
 static int mdss_mdp_cmd_tearcheck_cfg(struct mdss_mdp_mixer *mixer,
 			struct mdss_mdp_cmd_ctx *ctx, int enable)
 {
 	u32 cfg;
 
-	cfg = BIT(19); 
+	cfg = BIT(19); /* VSYNC_COUNTER_EN */
 	if (ctx->tear_check)
-		cfg |= BIT(20);	
+		cfg |= BIT(20);	/* VSYNC_IN_EN */
 	cfg |= ctx->vclk_line;
 
 	mdss_mdp_pingpong_write(mixer, MDSS_MDP_REG_PP_SYNC_CONFIG_VSYNC, cfg);
 	mdss_mdp_pingpong_write(mixer, MDSS_MDP_REG_PP_SYNC_CONFIG_HEIGHT,
-				0xfff0); 
+				0xfff0); /* set to verh height */
 
 	mdss_mdp_pingpong_write(mixer, MDSS_MDP_REG_PP_VSYNC_INIT_VAL,
 						ctx->height);
@@ -271,7 +280,7 @@ static void mdss_mdp_cmd_readptr_done(void *arg)
 		if (ctx->rdptr_enabled)
 			ctx->rdptr_enabled--;
 
-		
+		/* keep clk on during kickoff */
 		if (ctx->rdptr_enabled == 0 && ctx->koff_cnt)
 			ctx->rdptr_enabled++;
 	}
@@ -503,8 +512,8 @@ int mdss_mdp_read_panel_status(struct mdss_mdp_ctl *ctl)
 	memset(power_mode_rbuf, 0, RBUF_SIZE);
 	memset(signal_mode_rbuf, 0, RBUF_SIZE);
 
-	mdss_dsi_panel_cmd_read(ctrl_pdata, 0x0A, 0x00, panel_power_mode, power_mode_rbuf, RBUF_SIZE); 
-	mdss_dsi_panel_cmd_read(ctrl_pdata, 0x0E, 0x00, panel_signal_mode, signal_mode_rbuf, RBUF_SIZE); 
+	mdss_dsi_panel_cmd_read(ctrl_pdata, 0x0A, 0x00, panel_power_mode, power_mode_rbuf, RBUF_SIZE); /* Read LCM sleep out status */
+	mdss_dsi_panel_cmd_read(ctrl_pdata, 0x0E, 0x00, panel_signal_mode, signal_mode_rbuf, RBUF_SIZE); /* Read LCM TE Setting status */
 
 	return 0;
 }
@@ -538,7 +547,7 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 
 		if (rc <= 0) {
 			ctx->logging = 60;
-			mdss_mdp_read_panel_status(ctl); 
+			mdss_mdp_read_panel_status(ctl); /* Read panel status */
 			WARN(1, "cmd kickoff timed out (%d) ctl=%d\n",
 						rc, ctl->num);
 			rc = -EPERM;
@@ -603,6 +612,9 @@ int mdss_mdp_cmd_kickoff(struct mdss_mdp_ctl *ctl, void *arg)
 
 	mdss_mdp_cmd_set_partial_roi(ctl);
 
+	/*
+	 * tx dcs command if had any
+	 */
 	mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_DSI_CMDLIST_KOFF, NULL);
 	INIT_COMPLETION(ctx->pp_comp);
 	mdss_mdp_irq_enable(MDSS_MDP_IRQ_PING_PONG_COMP, ctx->pp_num);

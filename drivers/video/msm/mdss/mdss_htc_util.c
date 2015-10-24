@@ -73,14 +73,22 @@ static ssize_t dsi_cmd_write(
 	if (!ctrl_instance)
 		return count;
 
-	
+	/* end of string */
 	debug_buf[count] = 0;
 
-	
+	/* Format:
+	ex: echo 39 51 ff > dsi_cmd
+	read ex: echo 06 52 00 > dsi_cmd
+	     [type] space [addr] space [value]
+	     +--+--+-----+--+--+------+--+--+-
+	bit   0  1    2   3  4     5   6  7
+	ex:    39          51           ff
+	*/
+	/* Calc the count, min count = 9, format: type addr value */
 	cnt = (count) / 3 - 1;
 	debug_cmd.dchdr.dlen = cnt;
 
-	
+	/* Get the type */
 	sscanf(debug_buf, "%x", &type);
 
 	if (type == DTYPE_DCS_LWRITE)
@@ -94,7 +102,7 @@ static ssize_t dsi_cmd_write(
 
 	PR_DISP_INFO("%s: cnt=%d, type=0x%x\n", __func__, cnt, type);
 
-	
+	/* Get the cmd and value */
 	for (i = 0; i < cnt; i++) {
 		if (i >= DCS_MAX_CNT) {
 			PR_DISP_INFO("%s: DCS command count over DCS_MAX_CNT, Skip these commands.\n", __func__);
@@ -115,7 +123,7 @@ static ssize_t dsi_cmd_write(
 		cmdreq.flags = CMD_REQ_COMMIT | CMD_REQ_RX;
 		cmdreq.rlen = 4;
 		cmdreq.rbuf = dsi_rbuf;
-		cmdreq.cb = dsi_read_cb; 
+		cmdreq.cb = dsi_read_cb; /* call back */
 
 		mdss_dsi_cmdlist_put(ctrl_instance, &cmdreq);
 	} else {
@@ -209,8 +217,35 @@ err_out:
 	return count;
 }
 
+/*
+HTC native mipi command format :
 
-#define SLEEPMS_OFFSET(strlen) (strlen+1) 
+	"format string", < sleep ms >,  <cmd leng>, ['cmd bytes'...] ;
+
+	"format string" :
+		"DTYPE_DCS_WRITE"  : 0x05
+		"DTYPE_DCS_WRITE1" : 0x15
+		"DTYPE_DCS_LWRITE" : 0x39
+		"DTYPE_GEN_WRITE"  : 0x03
+		"DTYPE_GEN_WRITE1" : 0x13
+		"DTYPE_GEN_WRITE2" : 0x23
+		"DTYPE_GEN_LWRITE" : 0x29
+
+	Example :
+		htc-fmt,mdss-dsi-off-command =
+					"DTYPE_DCS_WRITE", <1>, <0x02>, [28 00],
+					"DTYPE_DCS_WRITE", <120>, <0x02>, [10 00];
+		htc-fmt,display-on-cmds = "DTYPE_DCS_WRITE", <0x0A>, <0x02>, [29 00];
+		htc-fmt,cabc-off-cmds = "DTYPE_DCS_LWRITE", <1>, <0x02>, [55 00];
+		htc-fmt,cabc-ui-cmds =
+			"DTYPE_DCS_LWRITE", <5>, <0x02>, [55 02],
+			"DTYPE_DCS_LWRITE", <1>, <0x02>, [5E 11],
+			"DTYPE_DCS_LWRITE", <1>, <0x0A>, [CA 2D 27 26 25 24 22 21 21 20],
+			"DTYPE_DCS_LWRITE", <1>, <0x23>, [CE 00 00 00 00 10 10 16 16 16 16 16 16 16 16 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00];
+
+*/
+
+#define SLEEPMS_OFFSET(strlen) (strlen+1) /* < sleep ms>, [cmd len ... */
 #define CMDLEN_OFFSET(strlen)  (SLEEPMS_OFFSET(strlen)+sizeof(const __be32))
 #define CMD_OFFSET(strlen)     (CMDLEN_OFFSET(strlen)+sizeof(const __be32))
 
@@ -254,7 +289,7 @@ int htc_mdss_dsi_parse_dcs_cmds(struct device_node *np,
 	if (!prop || !len || !(prop->length) || !(prop->value)) {
 		pr_err("%s: failed, key=%s  [%d : %d : %p]\n", __func__, cmd_key,
 			len, (prop ? prop->length : -1), (prop ? prop->value : 0) );
-		
+		//pr_err("%s: failed, key=%s\n", __func__, cmd_key);
 		return -ENOMEM;
 	}
 
@@ -271,7 +306,7 @@ int htc_mdss_dsi_parse_dcs_cmds(struct device_node *np,
 				break;
 			curcmdtype++;
 		};
-		if( !dsi_cmd_map[curcmdtype].cmdtype_strlen ) 
+		if( !dsi_cmd_map[curcmdtype].cmdtype_strlen ) /* no matching */
 			break;
 
 		i = be32_to_cpup((__be32 *)&data[CMDLEN_OFFSET(dsi_cmd_map[curcmdtype].cmdtype_strlen)]);
@@ -385,7 +420,7 @@ int mdss_mdp_parse_dt_dspp_pcc_setting(struct platform_device *pdev)
 			int i = 0;
 
 			dspp_pcc_mode[mode_index].dspp_pcc_config_cnt = 0;
-			
+			/* mode-name */
 			rc = of_property_read_string(pcc_node,
 				"htc,pcc-mode", &st);
 			if (rc) {
@@ -399,10 +434,10 @@ int mdss_mdp_parse_dt_dspp_pcc_setting(struct platform_device *pdev)
 				ARRAY_SIZE(dspp_pcc_mode[mode_index].mode_name),
 				"%s", st);
 
-			
+			/* pcc-enable */
 			of_property_read_u32(pcc_node, "htc,pcc-enable", &dspp_pcc_mode[mode_index].pcc_enable);
 
-			
+			/* pcc-configs */
 			pp_pcc_arr = of_get_property(pcc_node, "htc,pcc-configs", &pp_pcc_config_len);
 
 			if (!pp_pcc_arr) {
@@ -415,7 +450,7 @@ int mdss_mdp_parse_dt_dspp_pcc_setting(struct platform_device *pdev)
 
 			pp_pcc_config_len /= 2 * sizeof(u32);
 			if (pp_pcc_config_len) {
-				
+				/* Create dspp_pcc mode configs */
 				dspp_pcc_mode[mode_index].dspp_pcc_config = devm_kzalloc(&pdev->dev,
 					sizeof(*dspp_pcc_mode[mode_index].dspp_pcc_config) * pp_pcc_config_len, GFP_KERNEL);
 				pcc = dspp_pcc_mode[mode_index].dspp_pcc_config;
@@ -492,10 +527,10 @@ void htc_register_attrs(struct kobject *led_kobj, struct msm_fb_data_type *mfd)
 		if (rc)
 			pr_err("sysfs creation pp_pcc failed, rc=%d\n", rc);
 	}
-	
+	/* hue initial value */
 	htc_attr_status[HUE_INDEX].req_value = panel_info->mdss_pp_hue;
 
-	
+	/* pcc initial value was disable*/
 	htc_attr_status[PP_PCC_INDEX].req_value = 0;
 
 	return;
@@ -617,7 +652,7 @@ void htc_dimming_on(struct msm_fb_data_type *mfd)
 
 void htc_dimming_off(void)
 {
-	
+	/* Delete dimming workqueue */
 	cancel_delayed_work_sync(&dimming_work);
 }
 
@@ -629,7 +664,7 @@ void htc_set_pp_pa(struct mdss_mdp_ctl *ctl)
 	u32 base = 0, opmode;
 	char __iomem *basel;
 
-	
+	/* PP Picture Adjustment(PA) */
 	if (htc_attr_status[HUE_INDEX].req_value == htc_attr_status[HUE_INDEX].cur_value)
 		return;
 
@@ -647,7 +682,7 @@ void htc_set_pp_pa(struct mdss_mdp_ctl *ctl)
 	MDSS_MDP_REG_WRITE(base + MDSS_MDP_REG_DSPP_PA_BASE, htc_attr_status[HUE_INDEX].req_value);
 
 	opmode = MDSS_MDP_REG_READ(base);
-	opmode |= (1 << 20); 
+	opmode |= (1 << 20); /* PA_EN */
 	writel_relaxed(opmode, basel + MDSS_MDP_REG_DSPP_OP_MODE);
 
 	ctl->flush_bits |= BIT(13);
@@ -669,7 +704,7 @@ void htc_set_pp_pcc(struct mdss_mdp_ctl *ctl)
 	int i;
 	req_val = htc_attr_status[PP_PCC_INDEX].req_value;
 
-	
+	/* PP Panel Color Correction(PCC) */
 	if (req_val == htc_attr_status[PP_PCC_INDEX].cur_value)
 		return;
 
@@ -697,7 +732,7 @@ void htc_set_pp_pcc(struct mdss_mdp_ctl *ctl)
 	opmode = MDSS_MDP_REG_READ(base);
 
 	if(dspp_pcc_mode[req_val].pcc_enable) {
-		opmode |= MDSS_MDP_DSPP_OP_PCC_EN; 
+		opmode |= MDSS_MDP_DSPP_OP_PCC_EN; /* PCC_EN: enabled */
 		pcc = dspp_pcc_mode[req_val].dspp_pcc_config;
 		if (pcc)
 			for (i = 0; i < dspp_pcc_mode[req_val].dspp_pcc_config_cnt; i++) {
@@ -706,7 +741,7 @@ void htc_set_pp_pcc(struct mdss_mdp_ctl *ctl)
 				pcc++;
 			}
 	} else {
-		opmode &= ~MDSS_MDP_DSPP_OP_PCC_EN; 
+		opmode &= ~MDSS_MDP_DSPP_OP_PCC_EN; /* PCC_EN: disabled */
 	}
 
 	writel_relaxed(opmode, basel + MDSS_MDP_REG_DSPP_OP_MODE);

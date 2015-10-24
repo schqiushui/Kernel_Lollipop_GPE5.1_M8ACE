@@ -83,7 +83,7 @@ static int mdss_mdp_get_fbmem_base(unsigned long *phys, size_t *size)
 		return -ENOMEM;
 	}
 
-	
+	/* We just need physical addr of fbmem, free ion handle immediately. */
 	ion_phys(iclient, ihdl, phys, size);
 	ion_free(iclient, ihdl);
 
@@ -212,6 +212,10 @@ extern int mdss_mdp_parse_dt_dspp_pcc_setting(struct platform_device *pdev);
 
 u32 mdss_mdp_fb_stride(u32 fb_index, u32 xres, int bpp)
 {
+	/* The adreno GPU hardware requires that the pitch be aligned to
+	   32 pixels for color buffers, so for the cases where the GPU
+	   is writing directly to fb0, the framebuffer pitch
+	   also needs to be 32 pixel aligned */
 
 	if (fb_index == 0)
 		return ALIGN(xres, 32) * bpp;
@@ -286,7 +290,7 @@ int mdss_register_irq(struct mdss_hw *hw)
 	spin_unlock_irqrestore(&mdss_lock, irq_flags);
 
 	return 0;
-} 
+} /* mdss_regsiter_irq */
 EXPORT_SYMBOL(mdss_register_irq);
 
 void mdss_enable_irq(struct mdss_hw *hw)
@@ -351,6 +355,7 @@ void mdss_disable_irq(struct mdss_hw *hw)
 }
 EXPORT_SYMBOL(mdss_disable_irq);
 
+/* called from interrupt context */
 void mdss_disable_irq_nosync(struct mdss_hw *hw)
 {
 	u32 ndx_bit;
@@ -443,7 +448,7 @@ int mdss_mdp_bus_scale_set_quota(u64 ab_quota, u64 ib_quota)
 			vect = &bw_table->usecase[mdss_res->curr_bw_uc_idx].
 				vectors[i];
 
-			
+			/* avoid performing updates for small changes */
 			if ((ALIGN(ab_quota, size) == ALIGN(vect->ab, size)) &&
 			    (ALIGN(ib_quota, size) == ALIGN(vect->ib, size))) {
 				pr_debug("skip bus scaling, no changes\n");
@@ -495,6 +500,7 @@ static inline u32 mdss_mdp_irq_mask(u32 intr_type, u32 intf_num)
 	return 1 << (intr_type + intf_num);
 }
 
+/* function assumes that mdp is clocked to access hw registers */
 void mdss_mdp_irq_clear(struct mdss_data_type *mdata,
 		u32 intr_type, u32 intf_num)
 {
@@ -601,6 +607,16 @@ void mdss_mdp_hist_irq_disable(u32 irq)
 	spin_unlock_irqrestore(&mdp_lock, irq_flags);
 }
 
+/**
+ * mdss_mdp_irq_disable_nosync() - disable mdp irq
+ * @intr_type:	mdp interface type
+ * @intf_num:	mdp interface num
+ *
+ * This fucntion is called from interrupt context
+ * mdp_lock is already held at up stream (mdss_irq_handler)
+ * therefore spin_lock(&mdp_lock) is not allowed here
+ *
+*/
 void mdss_mdp_irq_disable_nosync(u32 intr_type, u32 intf_num)
 {
 	u32 irq;
@@ -731,6 +747,15 @@ int mdss_iommu_ctrl(int enable)
 		return mdata->iommu_ref_cnt;
 }
 
+/**
+ * mdss_bus_bandwidth_ctrl() -- place bus bandwidth request
+ * @enable:	value of enable or disable
+ *
+ * Function place bus bandwidth request to allocate saved bandwidth
+ * if enabled or free bus bandwidth allocation if disabled.
+ * Bus bandwidth is required by mdp.For dsi, it only requires to send
+ * dcs coammnd. It returns error if bandwidth request fails.
+ */
 void mdss_bus_bandwidth_ctrl(int enable)
 {
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
@@ -1086,7 +1111,7 @@ int mdss_hw_init(struct mdss_data_type *mdata)
 	mdata->mdp_rev = MDSS_MDP_REG_READ(MDSS_MDP_REG_HW_VERSION);
 	pr_info_once("MDP Rev=%x\n", mdata->mdp_rev);
 
-	
+	/* disable hw underrun recovery */
 	writel_relaxed(0x0, mdata->mdp_base +
 			MDSS_MDP_REG_VIDEO_INTF_UNDERFLOW_CTL);
 
@@ -1105,7 +1130,7 @@ int mdss_hw_init(struct mdss_data_type *mdata)
 		for (j = 0; j < ENHIST_LUT_ENTRIES; j++)
 			writel_relaxed(j, offset);
 
-		
+		/* swap */
 		writel_relaxed(1, offset + 4);
 	}
 	vig = mdata->vig_pipes;
@@ -1114,7 +1139,7 @@ int mdss_hw_init(struct mdss_data_type *mdata)
 			MDSS_MDP_REG_VIG_HIST_LUT_BASE;
 		for (j = 0; j < ENHIST_LUT_ENTRIES; j++)
 			writel_relaxed(j, offset);
-		
+		/* swap */
 		writel_relaxed(1, offset + 16);
 	}
 
@@ -1162,6 +1187,14 @@ static u32 mdss_mdp_res_init(struct mdss_data_type *mdata)
 	return rc;
 }
 
+/**
+ * mdss_mdp_footswitch_ctrl_splash() - clocks handoff for cont. splash screen
+ * @on: 1 to start handoff, 0 to complete the handoff after first frame update
+ *
+ * MDSS Clocks and GDSC are already on during continous splash screen, but
+ * increasing ref count will keep clocks from being turned off until handoff
+ * has properly happend after frame update.
+ */
 void mdss_mdp_footswitch_ctrl_splash(int on)
 {
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
@@ -1312,7 +1345,7 @@ static int mdss_mdp_probe(struct platform_device *pdev)
 	mdata->irq = res->start;
 	mdss_mdp_hw.ptr = mdata;
 
-	
+	/*populate hw iomem base info from device tree*/
 	rc = mdss_mdp_parse_dt(pdev);
 	if (rc) {
 		pr_err("unable to parse device tree\n");
@@ -1459,13 +1492,13 @@ static int mdss_mdp_get_pan_cfg(struct mdss_panel_cfg *pan_cfg)
 	} else if (pan_name[0] == '1') {
 		pan_cfg->lk_cfg = true;
 	} else {
-		
+		/* read from dt */
 		pan_cfg->lk_cfg = true;
 		pan_cfg->pan_intf = MDSS_PANEL_INTF_INVALID;
 		return -EINVAL;
 	}
 
-	
+	/* skip lk cfg and delimiter; ex: "0:" */
 	strlcpy(pan_name, &pan_name[2], MDSS_MAX_PANEL_LEN);
 	t = strnstr(pan_name, ":", MDSS_MAX_PANEL_LEN);
 	if (!t) {
@@ -1479,7 +1512,7 @@ static int mdss_mdp_get_pan_cfg(struct mdss_panel_cfg *pan_cfg)
 		pan_intf_str[i] = *(pan_name + i);
 	pan_intf_str[i] = 0;
 	pr_debug("%s:%d panel intf %s\n", __func__, __LINE__, pan_intf_str);
-	
+	/* point to the start of panel name */
 	t = t + 1;
 	strlcpy(&pan_cfg->arg_cfg[0], t, sizeof(pan_cfg->arg_cfg));
 	pr_debug("%s:%d: t=[%s] panel name=[%s]\n", __func__, __LINE__,
@@ -1534,7 +1567,7 @@ static int mdss_mdp_parse_bootarg(struct platform_device *pdev)
 	panel_name = &pan_cfg->arg_cfg[0];
 	intf_type = &pan_cfg->pan_intf;
 
-	
+	/* reads from dt by default */
 	pan_cfg->lk_cfg = true;
 
 	chosen_node = of_find_node_by_name(NULL, "chosen");
@@ -1603,7 +1636,7 @@ static int mdss_mdp_parse_bootarg(struct platform_device *pdev)
 
 get_dt_pan:
 	rc = mdss_mdp_parse_dt_pan_intf(pdev);
-	
+	/* if pref pan intf is not present */
 	if (rc)
 		pr_err("%s:unable to parse device tree for pan intf\n",
 			__func__);
@@ -1720,7 +1753,7 @@ static int  mdss_mdp_parse_dt_pipe_clk_ctrl(struct platform_device *pdev,
 			pipe->clk_ctrl.reg_off = be32_to_cpu(arr[i++]);
 			pipe->clk_ctrl.bit_off = be32_to_cpu(arr[i++]);
 
-			
+			/* status register is next in line to ctrl register */
 			pipe->clk_status.reg_off = pipe->clk_ctrl.reg_off + 4;
 			pipe->clk_status.bit_off = be32_to_cpu(arr[i++]);
 
@@ -2205,7 +2238,7 @@ static int mdss_mdp_parse_dt_smp(struct platform_device *pdev)
 						mmb, k, mdata->smp_mb_cnt);
 					return -EINVAL;
 				}
-				
+				/* rgb pipes fetches only single plane */
 				set_bit(mmb, pipe->smp_map[0].fixed);
 			}
 			if (bitmap_intersects(pipe->smp_map[0].fixed,
@@ -2329,16 +2362,31 @@ static int mdss_mdp_parse_dt_misc(struct platform_device *pdev)
 	if (rc)
 		pr_debug("Could not read optional property: highest bank bit\n");
 
+	/*
+	 * 2x factor on AB because bus driver will divide by 2
+	 * due to 2x ports to BIMC
+	 */
 	mdata->ab_factor.numer = 2;
 	mdata->ab_factor.denom = 1;
 	mdss_mdp_parse_dt_fudge_factors(pdev, "qcom,mdss-ab-factor",
 		&mdata->ab_factor);
 
+	/*
+	 * 1.2 factor on ib as default value. This value is
+	 * experimentally determined and should be tuned in device
+	 * tree.
+	 */
 	mdata->ib_factor.numer = 6;
 	mdata->ib_factor.denom = 5;
 	mdss_mdp_parse_dt_fudge_factors(pdev, "qcom,mdss-ib-factor",
 		&mdata->ib_factor);
 
+	/*
+	 * Set overlap ib value equal to ib by default. This value can
+	 * be tuned in device tree to be different from ib.
+	 * This factor apply when the max bandwidth per pipe
+	 * is the overlap BW.
+	 */
 	mdata->ib_factor_overlap.numer = mdata->ib_factor.numer;
 	mdata->ib_factor_overlap.denom = mdata->ib_factor.denom;
 	mdss_mdp_parse_dt_fudge_factors(pdev, "qcom,mdss-ib-factor-overlap",
@@ -2464,12 +2512,31 @@ struct mdss_data_type *mdss_mdp_get_mdata(void)
 	return mdss_res;
 }
 
+/**
+ * mdss_is_ready() - checks if mdss is probed and ready
+ *
+ * Checks if mdss resources have been initialized
+ *
+ * returns true if mdss is ready, else returns false
+ */
 bool mdss_is_ready(void)
 {
 	return mdss_mdp_get_mdata() ? true : false;
 }
 EXPORT_SYMBOL(mdss_mdp_get_mdata);
 
+/**
+ * mdss_panel_intf_type() - checks if a given intf type is primary
+ * @intf_val: panel interface type of the individual controller
+ *
+ * Individual controller queries with MDP to check if it is
+ * configured as the primary interface.
+ *
+ * returns a pointer to the configured structure mdss_panel_cfg
+ * to the controller that's configured as the primary panel interface.
+ * returns NULL on error or if @intf_val is not the configured
+ * controller.
+ */
 struct mdss_panel_cfg *mdss_panel_intf_type(int intf_val)
 {
 	if (!mdss_res || !mdss_res->pan_cfg.init_done)
@@ -2743,6 +2810,10 @@ static struct platform_driver mdss_mdp_driver = {
 	.resume = mdss_mdp_resume,
 	.shutdown = NULL,
 	.driver = {
+		/*
+		 * Driver name must match the device name added in
+		 * platform.c.
+		 */
 		.name = "mdp",
 		.of_match_table = mdss_mdp_dt_match,
 		.pm = &mdss_mdp_pm_ops,
