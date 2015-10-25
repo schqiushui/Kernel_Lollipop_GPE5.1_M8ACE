@@ -492,6 +492,7 @@
 	htc,slot-type = <0>;
 	htc,bkops_support;
 	qcom,nonremovable;
+	qcom,wakeup-on-idle;
 	status = "ok";
 };
 
