@@ -140,6 +140,28 @@ endif
 	dtb-$(CONFIG_ARCH_MSM8226)	+= apq8026-v2-1080p-mtp.dtb
 
 # HTC dtbs
+ifeq ($(CONFIG_MACH_A11_UL), y)
+	htc_dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-a11ul.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-a11chl.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-a11eul.dtb
+endif
+ifeq ($(CONFIG_MACH_A3_UL)$(CONFIG_MACH_A3_CL)$(CONFIG_MACH_A3_TL), y)
+	htc_dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-a3ul.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-a3ul-xb.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-a3cl.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-a3tl.dtb
+endif
+ifeq ($(CONFIG_MACH_MEM_UL)$(CONFIG_MACH_MEM_WL), y)
+	htc_dtb-$(CONFIG_ARCH_MSM8226)  += msm8926-memul.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8226)  += msm8926-memwl.dtb
+endif
+ifeq ($(CONFIG_MACH_A5_UL)$(CONFIG_MACH_A5_DWG)$(CONFIG_MACH_A5_TL)$(CONFIG_MACH_A5_DWGL)$(CONFIG_MACH_A5_DUGL), y)
+	htc_dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-a5ul.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8226)	+= msm8226-a5dwg.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-a5tl.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-a5dwgl.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8226)  += msm8926-a5dugl.dtb
+endif
 ifeq ($(CONFIG_MACH_J1), y)
 	htc_dtb-$(CONFIG_ARCH_MSM8226)	+= msm8926-j1.dtb
 endif
@@ -176,10 +198,64 @@ initrd_phys-$(CONFIG_ARCH_FSM9XXX)	:= 0x12000000
 	dtb-$(CONFIG_ARCH_MSMSAMARIUM)	+= msmsamarium-rumi.dtb
 
 # HTC dtbs
+ifeq ($(CONFIG_MACH_GLU_U)$(CONFIG_MACH_GLU_WLJ), y)
+	htc_dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974-v2.0-1-glu-xa.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974-v2.0-1-glu-xb.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974-v2.2-glu-xb.dtb
+        htc_dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974-v2.0-1-gluwlj-xa.dtb
+        htc_dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974-v2.0-1-gluwlj-xb.dtb
+        htc_dtb-$(CONFIG_ARCH_MSM8974)	+= msm8974-v2.2-gluwlj-xb.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974-v2.0-1-glu2-xa.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974-v2.0-1-glu2wlj-xa.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974-v2.2-glu2-xa.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974-v2.2-glu2wlj-xa.dtb
+endif
 ifeq ($(CONFIG_MACH_M8), y)
 	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-m8.dtb
 	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-m8-xb.dtb
 	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-m8-xd.dtb
 	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-m8-xe.dtb
 	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-m8-xf.dtb
+
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-m8dug.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-m8dug-xb.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-m8dug-xc.dtb
+
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-m8wl.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-m8wl-xb.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-m8wl-xc.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-m8wl-xd.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-m8wl-xe.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-m8whl.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-m8whl-xb.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-m8whl-xd.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-m8whl-xe.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-m8whl-xf.dtb
+
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-m8tl.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-m8tl-xb.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-m8tl-xc.dtb
+endif
+ifeq ($(CONFIG_MACH_MEC_UL)$(CONFIG_MACH_MEC_TL)$(CONFIG_MACH_MEC_DUG)$(CONFIG_MACH_MEC_DWG)$(CONFIG_MACH_MEC_WHL), y)
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-mecul.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-mecul_8974AA.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-mectl.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-mecdug.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-mecdwg.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-mecdwg-msm8674.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-mecwhl.dtb
+endif
+ifeq ($(CONFIG_MACH_B2_WLJ)$(CONFIG_MACH_B2_UL), y)
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-b2wlj.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-b2wlj-xb.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-b2ul.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-ab-pm8941-b2ul-xb.dtb
+endif
+ifeq ($(CONFIG_MACH_EYE_UL)$(CONFIG_MACH_EYE_WL)$(CONFIG_MACH_EYE_WHL), y)
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-aa-pm8941-eyeul.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-aa-pm8941-eyewl.dtb
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-aa-pm8941-eyewhl.dtb
+endif
+ifeq ($(CONFIG_MACH_MELS_TUHL), y)
+	htc_dtb-$(CONFIG_ARCH_MSM8974)  += msm8974pro-aa-pm8941-melstuhl.dtb
 endif

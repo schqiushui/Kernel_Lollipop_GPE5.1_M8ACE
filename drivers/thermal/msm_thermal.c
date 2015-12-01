@@ -3188,7 +3188,7 @@ static int __devinit msm_thermal_dev_probe(struct platform_device *pdev)
 	key = "qcom,freq-control-mask";
 	ret = of_property_read_u32(node, key, &data.bootup_freq_control_mask);
 
-#if defined(CONFIG_MACH_DUMMY)
+#if defined(CONFIG_MACH_EYE_UL)
 	if(get_kernel_flag() & KERNEL_FLAG_KEEP_CHARG_ON) {
 		data.poll_ms = 100;
 		data.bootup_freq_step = 4;

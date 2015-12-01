@@ -48,7 +48,7 @@ static struct msm_sensor_power_setting vd6869_power_setting[] = {
 		.config_val = GPIO_OUT_HIGH,
 		.delay = 5,
 	},
-#if 0 
+#if 0 //MCLK enalbed in yushanII
 	{
 		.seq_type = SENSOR_CLK,
 		.seq_val = SENSOR_CAM_MCLK,
@@ -124,11 +124,11 @@ struct vd6869_ver_map {
 	char *str;
 };
 
-static struct vd6869_ver_map vd6869_ver_tab[] = {  
-	{ 0x09, "(0.9)"},	
-	{ 0x0A, "(0.9e)"},	
-	{ 0x10, "(1.0)"},	
-	{ VD6869_VER_UNKNOWN, "(unknown)"}  
+static struct vd6869_ver_map vd6869_ver_tab[] = {  /* vd6869_ver_map.str max length: 32 - strlen(vd6869NAME) -1 */
+	{ 0x09, "(0.9)"},	/* ver 0.9 */
+	{ 0x0A, "(0.9e)"},	/* ver 0.9 enhancement */
+	{ 0x10, "(1.0)"},	/* ver 1.0 */
+	{ VD6869_VER_UNKNOWN, "(unknown)"}  /* VD6869_VER_UNKNOWN item must be the last one of this table */
 };
 
 static uint8_t vd6869_ver = VD6869_VER_UNKNOWN;
@@ -156,10 +156,10 @@ static ssize_t sensor_vendor_show(struct device *dev,
 		if (vd6869_ver == vd6869_ver_tab[i].val)
 			break;
 	}
-	if (i < len)  
+	if (i < len)  /* mapped, show its string */
 		snprintf(vd6869NAME_ver, sizeof(vd6869NAME_ver), "%s%s",
 			vd6869NAME, vd6869_ver_tab[i].str);
-	else  
+	else  /* unmapped, show unknown and its value */
 		snprintf(vd6869NAME_ver, sizeof(vd6869NAME_ver), "%s%s-%02X",
 			vd6869NAME, vd6869_ver_tab[len - 1].str, vd6869_ver);
 	pr_info("%s: version(%d) : %s\n", __func__, vd6869_ver, vd6869NAME_ver);
@@ -168,13 +168,13 @@ static ssize_t sensor_vendor_show(struct device *dev,
 	month = (vd6869_year_mon & 0x0f);
 	date  = ((vd6869_date & 0xf8) >> 3);
 
-	if((year == 0)&&(month == 0)&&(date == 0))
+	if((year == 0)&&(month == 0)&&(date == 0))/* not support OTP date */
 		pr_err("%s: Invalid OTP date\n", __func__);
 	else
-		year += 2000; 
+		year += 2000; /* year:13, align format to 2013 */
 
 	snprintf(buf, PAGE_SIZE, "%s %s %s %04d-%02d-%02d \n", vd6869Vendor, vd6869NAME_ver, vd6869Size, year, month, date);
-	  
+	/*snprintf(buf, PAGE_SIZE, "%s %s %s\n", vd6869Vendor, vd6869NAME, vd6869Size);*/  /* without version */
 	ret = strlen(buf) + 1;
 
 	return ret;
@@ -207,16 +207,45 @@ static int vd6869_sysfs_init(void)
 	return 0 ;
 }
 
+/*HTC_START Harvey 20130701 - Set otp af value*/
 struct vcm_driver_ic_info {
 	uint8_t driver_ic;
 	const char *act_name;
 };
 
 static struct vcm_driver_ic_info vd6869_vcm_driver_ic_info[] = {
-	{0x21, "ti201_act"},	
-	{0x01, "rumbas_act"},	
+	{0x21, "ti201_act"},	/*sharp*/
+	{0x01, "rumbas_act"},	/*liteon*/
 };
+/*HTC_END*/
 
+/*HTC_START Harvey 20130628 - Porting read OTP*/
+/*
+OTP Location
+
+Burn in times                       1st(Layer 0)    2nd(Layer 1)    3rd(Layer 2)
+
+0 Module vendor                     0x3C8           0x3D8           0x3B8
+1 LENS                              0x3C9           0x3D9           0x3B9
+2 Sensor Version                    0x3CA           0x3DA           0x3BA
+3 Driver IC Vendor & Version        0x3CB           0x3DB           0x3BB
+4 Actuator vender ID & Version      0x3CC           0x3DC           0x3BC
+
+5 Module ID                         0x3A0           0x380           0x388
+6 Module ID                         0x3A1           0x381           0x389
+7 Module ID                         0x3A2           0x382           0x38A
+
+8 BAIS Calibration data             0x3CD           0x3DD           0x3BD
+9 OFFSET Calibration data           0x3CE           0x3DE           0x3BE
+a VCM bottom mech. Limit (MSByte)   0x3C0           0x3D0           0x3B0
+b VCM bottom mech. Limit (LSByte)   0x3C1           0x3D1           0x3B1
+c Infinity position code (MSByte)   0x3C2           0x3D2           0x3B2
+d Infinity position code (LSByte)   0x3C3           0x3D3           0x3B3
+e Macro position code (MSByte)      0x3C4           0x3D4           0x3B4
+f Macro position code (LSByte)      0x3C5           0x3D5           0x3B5
+10 VCM top mech. Limit (MSByte      0x3C6           0x3D6           0x3B6
+11 VCM top mech. Limit (LSByte)     0x3C7           0x3D7           0x3B7
+*/
 
 #define OTP_BUFFER_OFFSET 0x33FA
 #define OTP_STATUS_REG 0x3302
@@ -224,31 +253,33 @@ static struct vcm_driver_ic_info vd6869_vcm_driver_ic_info[] = {
 #define LITEON_OTP_SIZE 0x12
 
 const static short liteon_otp_addr[3][LITEON_OTP_SIZE] = {
-    
-    {0x3C8,0x3C9,0x3CA,0x3CB,0x3CC,0x3A0,0x3A1,0x3A2,0x3CD,0x3CE,0x3C0,0x3C1,0x3C2,0x3C3,0x3C4,0x3C5,0x3C6,0x3C7}, 
-    {0x3D8,0x3D9,0x3DA,0x3DB,0x3DC,0x380,0x381,0x382,0x3DD,0x3DE,0x3D0,0x3D1,0x3D2,0x3D3,0x3D4,0x3D5,0x3D6,0x3D7}, 
-    {0x3B8,0x3B9,0x3BA,0x3BB,0x3BC,0x388,0x389,0x38A,0x3BD,0x3BE,0x3B0,0x3B1,0x3B2,0x3B3,0x3B4,0x3B5,0x3B6,0x3B7}, 
+    //0,    1,    2,    3,    4,    5,    6,    7,    8,    9,    a,    b,    c,    d,    e,    f,   10,   11
+    {0x3C8,0x3C9,0x3CA,0x3CB,0x3CC,0x3A0,0x3A1,0x3A2,0x3CD,0x3CE,0x3C0,0x3C1,0x3C2,0x3C3,0x3C4,0x3C5,0x3C6,0x3C7}, // layer 1
+    {0x3D8,0x3D9,0x3DA,0x3DB,0x3DC,0x380,0x381,0x382,0x3DD,0x3DE,0x3D0,0x3D1,0x3D2,0x3D3,0x3D4,0x3D5,0x3D6,0x3D7}, // layer 2
+    {0x3B8,0x3B9,0x3BA,0x3BB,0x3BC,0x388,0x389,0x38A,0x3BD,0x3BE,0x3B0,0x3B1,0x3B2,0x3B3,0x3B4,0x3B5,0x3B6,0x3B7}, // layer 3
 };
 
+/*HTC_START Harvey 20130628 - Porting OIS*/
 #if defined(CONFIG_ACT_OIS_BINDER)
 extern void HtcActOisBinder_set_OIS_OTP(uint8_t *otp_data, uint8_t otp_size);
 
 #define LITEON_OIS_OTP_SIZE 34
 const static short ois_addr[3][LITEON_OIS_OTP_SIZE] = {
-    
-    {0x090,0x091,0x092,0x093,0x094,0x095,0x096,0x097,0x098,0x099,0x09A,0x09B,0x09C,0x09D,0x09E,0x09F,0x0A0,0x0A1,0x0A2,0x0A3,0x0A4,0x0A5,0x0A6,0x0A7,0x0A8,0x0A9,0x0AA,0x0AB,0x0AC,0x0AD,0x0AE,0x0AF,0x0F0,0x0F4}, 
-    {0x0B0,0x0B1,0x0B2,0x0B3,0x0B4,0x0B5,0x0B6,0x0B7,0x0B8,0x0B9,0x0BA,0x0BB,0x0BC,0x0BD,0x0BE,0x0BF,0x0C0,0x0C1,0x0C2,0x0C3,0x0C4,0x0C5,0x0C6,0x0C7,0x0C8,0x0C9,0x0CA,0x0CB,0x0CC,0x0CD,0x0CE,0x0CF,0x0F8,0x0F9}, 
-    {0x0D0,0x0D1,0x0D2,0x0D3,0x0D4,0x0D5,0x0D6,0x0D7,0x0D8,0x0D9,0x0DA,0x0DB,0x0DC,0x0DD,0x0DE,0x0DF,0x0E0,0x0E1,0x0E2,0x0E3,0x0E4,0x0E5,0x0E6,0x0E7,0x0E8,0x0E9,0x0EA,0x0EB,0x0EC,0x0ED,0x0EE,0x0EF,0x0FC,0x0FD}, 
+    //0,    1,    2,    3,    4,    5,    6,    7,    8,    9,    a,    b,    c,    d,    e,    f,   10,   11
+    {0x090,0x091,0x092,0x093,0x094,0x095,0x096,0x097,0x098,0x099,0x09A,0x09B,0x09C,0x09D,0x09E,0x09F,0x0A0,0x0A1,0x0A2,0x0A3,0x0A4,0x0A5,0x0A6,0x0A7,0x0A8,0x0A9,0x0AA,0x0AB,0x0AC,0x0AD,0x0AE,0x0AF,0x0F0,0x0F4}, // layer 1
+    {0x0B0,0x0B1,0x0B2,0x0B3,0x0B4,0x0B5,0x0B6,0x0B7,0x0B8,0x0B9,0x0BA,0x0BB,0x0BC,0x0BD,0x0BE,0x0BF,0x0C0,0x0C1,0x0C2,0x0C3,0x0C4,0x0C5,0x0C6,0x0C7,0x0C8,0x0C9,0x0CA,0x0CB,0x0CC,0x0CD,0x0CE,0x0CF,0x0F8,0x0F9}, // layer 2
+    {0x0D0,0x0D1,0x0D2,0x0D3,0x0D4,0x0D5,0x0D6,0x0D7,0x0D8,0x0D9,0x0DA,0x0DB,0x0DC,0x0DD,0x0DE,0x0DF,0x0E0,0x0E1,0x0E2,0x0E3,0x0E4,0x0E5,0x0E6,0x0E7,0x0E8,0x0E9,0x0EA,0x0EB,0x0EC,0x0ED,0x0EE,0x0EF,0x0FC,0x0FD}, // layer 3
 };
 #endif
+/*HTC_END*/
 
 static struct msm_camera_i2c_reg_array otp_reg_settings[] = {
-    {0x44c0, 0x01},
+    {0x44c0, 0x01},//Set nvm0_pdn and nvm1_pdn to high
     {0x4500, 0x01},
-    {0x44e4, 0x00},
-    {0x4524, 0x00},
-    {0x4584, 0x01},
-    {0x44ec, 0x01},
+    {0x44e4, 0x00},//ECC disable:0x1 enable:0x0
+    {0x4524, 0x00},//ECC disable:0x1 enable:0x0
+    {0x4584, 0x01},//enable OTP power
+    {0x44ec, 0x01},// Data write timing settings for memory locatin #0-#127
     {0x44ed, 0x80},
     {0x44f0, 0x04},
     {0x44f1, 0xb0},
@@ -256,8 +287,8 @@ static struct msm_camera_i2c_reg_array otp_reg_settings[] = {
     {0x452d, 0x80},
     {0x4530, 0x04},
     {0x4531, 0xb0},
-	{0x3305, 0x00},
-    {0x3303, 0x01},
+	{0x3305, 0x00},//read 1k for all OTP
+    {0x3303, 0x01},//specify the number of 32bits data involved in operation.
 	{0x3304, 0x00},
     {0x3301, 0x02},
 };
@@ -274,7 +305,7 @@ static  struct msm_camera_i2c_reg_setting otp_settings = {
 static int vd6869_shut_down_otp(struct msm_sensor_ctrl_t *s_ctrl,uint16_t addr, uint16_t data){
 	int rc=0,i;
 	for(i = 0; i < OTP_WAIT_TIMEOUT;i++){
-		
+		/*shut down power*/
 		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
 				s_ctrl->sensor_i2c_client,
 				addr,
@@ -297,7 +328,7 @@ static int vd6869_init_otp(struct msm_sensor_ctrl_t *s_ctrl){
 	int i,rc = 0;
 	uint16_t read_data = 0;
 
-	
+	/*cut 1.0 manual read OTP*/
 	for(i = 0 ;i < OTP_WAIT_TIMEOUT; i++) {
 		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write_table(
 				s_ctrl->sensor_i2c_client,
@@ -312,9 +343,9 @@ static int vd6869_init_otp(struct msm_sensor_ctrl_t *s_ctrl){
 		mdelay(1);
 	}
 
-	
+	/*wait OTP ready*/
 	for(i = 0 ;i < OTP_WAIT_TIMEOUT; i++){
-		
+		/*0x3302 is read OTP status 0x00 READY 0x01 PROGRAM 0x02 READ*/
 		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
 				s_ctrl->sensor_i2c_client,
 				OTP_STATUS_REG,
@@ -359,7 +390,7 @@ int32_t vd6869_read_otp_valid_layer(struct msm_sensor_ctrl_t *s_ctrl, int8_t *va
 					pr_err("%s: i2c_read 0x%x failed\n", __func__, liteon_otp_addr[j][i]);
 					return rc;
 				}
-				
+				/*pr_info("%s: OTP addr 0x%x = 0x%x\n", __func__,  liteon_otp_addr[j][i], read_data);*/
 
 				if (read_data) {
 					layer = j;
@@ -376,6 +407,7 @@ int32_t vd6869_read_otp_valid_layer(struct msm_sensor_ctrl_t *s_ctrl, int8_t *va
 	return rc;
 }
 
+/*HTC_START, read OTP memory for dual cam calibration*/
 int32_t vd6869_read_otp_memory(struct sensorb_cfg_data *cdata, struct msm_sensor_ctrl_t *s_ctrl, bool first)
 {
 	int32_t rc = 0;
@@ -415,6 +447,7 @@ int32_t vd6869_read_otp_memory(struct sensorb_cfg_data *cdata, struct msm_sensor
 
 	return rc;
 }
+/*HTC_END*/
 
 static int vd6869_read_module_vendor(struct msm_sensor_ctrl_t *s_ctrl, uint8_t valid_layer, uint8_t* module_vendor, uint8_t* driver_ic, bool first)
 {
@@ -482,10 +515,12 @@ int vd6869_read_fuseid_liteon(struct sensorb_cfg_data *cdata,
 
     static uint8_t otp[LITEON_OTP_SIZE];
 	uint16_t read_data = 0;
+/*HTC_START Harvey 20130628 - Porting OIS*/
 #if defined(CONFIG_ACT_OIS_BINDER)
 	int32_t j, ois_valid_layer=-1;
 	static uint8_t ois_otp[LITEON_OIS_OTP_SIZE];
 #endif
+/*HTC_END*/
 
 	if (first) {
         for (i=0; i<LITEON_OTP_SIZE; ++i) {
@@ -498,14 +533,15 @@ int vd6869_read_fuseid_liteon(struct sensorb_cfg_data *cdata,
                 pr_err("%s: i2c_read 0x%x failed\n", __func__, liteon_otp_addr[valid_layer][i]);
                 return rc;
             }
-            
+            /*pr_info("%s: OTP addr 0x%x = 0x%x\n", __func__,  liteon_otp_addr[valid_layer][i], read_data);*/
 
             otp[i]= read_data;
         }
         pr_info("%s: OTP valid layer = %d\n", __func__,  valid_layer);
 
+/*HTC_START Harvey 20130628 - Porting OIS*/
     #if defined(CONFIG_ACT_OIS_BINDER)
-        
+        // start from layer 2
         for (j=2; j>=0; --j) {
             for (i=0; i<LITEON_OIS_OTP_SIZE; ++i) {
                 rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
@@ -517,7 +553,7 @@ int vd6869_read_fuseid_liteon(struct sensorb_cfg_data *cdata,
                     pr_err("%s: i2c_read 0x%x failed\n", __func__, ois_addr[j][i]);
                     return rc;
             	}
-                
+                /*pr_info("%s: OTP ois_addr 0x%x = 0x%x\n", __func__,  ois_addr[j][i], read_data);*/
 
                 ois_otp[i]= read_data;
 
@@ -531,25 +567,28 @@ int vd6869_read_fuseid_liteon(struct sensorb_cfg_data *cdata,
 
 
         if (ois_valid_layer!=-1) {
+        	/*for(i=0; i<LITEON_OIS_OTP_SIZE;i ++)
+        		pr_info("read out OTP OIS data = 0x%x\n", ois_otp[i]);*/
 
         	HtcActOisBinder_set_OIS_OTP(ois_otp, LITEON_OIS_OTP_SIZE);
         }
     #endif
+/*HTC_END*/
     }
-    
-    vd6869_ver = otp[2]; 
+    // vendor
+    vd6869_ver = otp[2]; // HTC pg 20130329 add sensor cut info
     cdata->sensor_ver = otp[2];
 
     if (board_mfg_mode())
         msm_dump_otp_to_file (VD6869_SENSOR_NAME, liteon_otp_addr[valid_layer], otp, sizeof(otp));
 
-    
+    // fuseid
     cdata->cfg.fuse.fuse_id_word1 = 0;
     cdata->cfg.fuse.fuse_id_word2 = otp[5];
     cdata->cfg.fuse.fuse_id_word3 = otp[6];
     cdata->cfg.fuse.fuse_id_word4 = otp[7];
 
-    
+    // vcm
     cdata->af_value.VCM_BIAS = otp[8];
     cdata->af_value.VCM_OFFSET = otp[9];
     cdata->af_value.VCM_BOTTOM_MECH_MSB = otp[0xa];
@@ -590,10 +629,46 @@ int vd6869_read_fuseid_liteon(struct sensorb_cfg_data *cdata,
 int vd6869_read_fuseid_sharp(struct sensorb_cfg_data *cdata,
 	struct msm_sensor_ctrl_t *s_ctrl, bool first, uint8_t valid_layer)
 {
+/*
+                                    1st Layer	2nd Layer	3rd Layer
+
+0   Year[7:4], Month[3:0]	        0x3A0	    0x380	    0x388
+1   Date[7:3],000	                0x3A1	    0x381	    0x389
+2   Start VCM code (MSByte)	        0x3C0	    0x3D0	    0x3B0
+3   Start VCM code (LSByte)	        0x3C1	    0x3D1	    0x3B1
+4   Infinity position code (MSByte)	0x3C2	    0x3D2	    0x3B2
+5   Infinity position code (LSByte)	0x3C3	    0x3D3	    0x3B3
+6   Macro position code (MSByte)	0x3C4	    0x3D4	    0x3B4
+7   Macro position code (LSByte)	0x3C5	    0x3D5	    0x3B5
+8   0x00	                        0x3C6	    0x3D6	    0x3B6
+9   0x00	                        0x3C7	    0x3D7	    0x3B7
+a   Module Vendor ID	            0x3C8	    0x3D8	    0x3B8
+b   Lens ID	                        0x3C9	    0x3D9	    0x3B9
+c   Sensor Version	                0x3CA	    0x3DA	    0x3BA
+d   Driver ID	                    0x3CB	    0x3DB	    0x3BB
+e   Actuator ID	                    0x3CC	    0x3DC	    0x3BC
+f   0x00	                        0x3CD	    0x3DD	    0x3BD
+10  0x00	                        0x3CE	    0x3DE	    0x3BE
+11  CheckSum	                    0x3CF	    0x3DF	    0x3BF
+
+12  fuse id 0                       0x3f4       0x3f4       0x3f4
+13  fuse id 1                       0x3f5       0x3f5       0x3f5
+14  fuse id 2                       0x3f6       0x3f6       0x3f6
+15  fuse id 3                       0x3f7       0x3f7       0x3f7
+16  fuse id 4                       0x3f8       0x3f8       0x3f8
+17  fuse id 5                       0x3f9       0x3f9       0x3f9
+18  fuse id 6                       0x3fa       0x3fa       0x3fa
+19  fuse id 7                       0x3fb       0x3fb       0x3fb
+1a  fuse id 8                       0x3fc       0x3fc       0x3fc
+1b  fuse id 9                       0x3fd       0x3fd       0x3fd
+1c  fuse id 10                      0x3fe       0x3fe       0x3fe
+1d  fuse id 11                      0x3ff       0x3ff       0x3ff
+
+*/
     #define SHARP_OTP_SIZE 0x12
     #define SHARP_OTP_LAYER 3
     const static short sharp_otp_addr[SHARP_OTP_LAYER][SHARP_OTP_SIZE] = {
-        
+        //0,   1,    2,    3,    4,    5,    6,    7,    8,    9,    a,    b,    c,    d,    e,    f,   10,    11,
         {0x3A0,0x3A1,0x3C0,0x3C1,0x3C2,0x3C3,0x3C4,0x3C5,0x3C6,0x3C7,0x3C8,0x3C9,0x3CA,0x3CB,0x3CC,0x3CD,0x3CE,0x3CF},
         {0x380,0x381,0x3D0,0x3D1,0x3D2,0x3D3,0x3D4,0x3D5,0x3D6,0x3D7,0x3D8,0x3D9,0x3DA,0x3DB,0x3DC,0x3DD,0x3DE,0x3DF},
         {0x388,0x389,0x3B0,0x3B1,0x3B2,0x3B3,0x3B4,0x3B5,0x3B6,0x3B7,0x3B8,0x3B9,0x3BA,0x3BB,0x3BC,0x3BD,0x3BE,0x3BF}
@@ -618,12 +693,12 @@ int vd6869_read_fuseid_sharp(struct sensorb_cfg_data *cdata,
                 pr_err("%s: i2c_read 0x%x failed\n", __func__, sharp_otp_addr[valid_layer][i]);
                 return rc;
             }
-            
+            /*pr_info("%s: OTP addr 0x%x = 0x%x\n", __func__,  sharp_otp_addr[valid_layer][i], read_data);*/
 
             otp[i]= read_data;
         }
         pr_info("%s: OTP valid layer = %d\n", __func__,  valid_layer);
-        
+        // fuse id
         for (i=0;i<SHARP_FUSEID_SIZE;++i) {
             rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read(
                 s_ctrl->sensor_i2c_client,
@@ -634,7 +709,7 @@ int vd6869_read_fuseid_sharp(struct sensorb_cfg_data *cdata,
                pr_err("%s: i2c_read 0x%x failed\n", __func__, sharp_fuseid_addr[i]);
                return rc;
             }
-            
+            /*pr_info("%s: OTP fuseid 0x%x = 0x%x\n", __func__,  sharp_fuseid_addr[i], read_data);*/
 
             otp[i+SHARP_OTP_SIZE]= read_data;
         }
@@ -667,7 +742,7 @@ int vd6869_read_fuseid_sharp(struct sensorb_cfg_data *cdata,
         (otp[0x1b]<<16) |
         (otp[0x1c]<<8) |
         (otp[0x1d]);
-    
+    /*PASS DATA to RUMBAS_ACT*/
     cdata->af_value.VCM_START_MSB = otp[2];
     cdata->af_value.VCM_START_LSB = otp[3];
     cdata->af_value.AF_INF_MSB = otp[4];
@@ -711,7 +786,7 @@ static int vd6869_read_fuseid(struct sensorb_cfg_data *cdata,
 	uint8_t driver_ic;
 	static bool first=true;
 	int8_t valid_layer = -1;
-    uint8_t i; 
+    uint8_t i; /*HTC Harvey 20130701 - Set otp af value*/
 
 	if (first) {
 		rc = vd6869_init_otp(s_ctrl);
@@ -737,6 +812,7 @@ static int vd6869_read_fuseid(struct sensorb_cfg_data *cdata,
 	}
 	cdata->af_value.VCM_VENDOR = module_vendor;
 
+/*HTC_START Harvey 20130701 - Set otp af value*/
 	for(i=0; i<sizeof(vd6869_vcm_driver_ic_info)/sizeof(struct vcm_driver_ic_info); i++) {
 		if(driver_ic == vd6869_vcm_driver_ic_info[i].driver_ic) {
 			strlcpy(cdata->af_value.ACT_NAME,
@@ -746,9 +822,11 @@ static int vd6869_read_fuseid(struct sensorb_cfg_data *cdata,
 		}
 	}
 	pr_info("%s: OTP Actuator Name = %s\n",__func__, cdata->af_value.ACT_NAME);
+/*HTC_END*/
 
-	
-	
+/*HTC_START, read OTP memory for dual cam calibration*/
+	//Enable the OTP dump for all build temporally.
+	//if(board_build_flag() == 1)   //for MFG build
 	{
 		rc = vd6869_read_otp_memory(cdata, s_ctrl, first);
 		if (rc<0) {
@@ -756,6 +834,7 @@ static int vd6869_read_fuseid(struct sensorb_cfg_data *cdata,
 			return rc;
 		}
 	}
+/*HTC_END*/
 
 	switch (module_vendor) {
 		case 0x1:
@@ -772,18 +851,19 @@ static int vd6869_read_fuseid(struct sensorb_cfg_data *cdata,
 	first = false;
 	return rc;
 }
+/*HTC_END*/
 
 static int32_t vd6869_platform_probe(struct platform_device *pdev)
 {
 	int32_t rc = 0;
 	const struct of_device_id *match;
 	match = of_match_device(vd6869_dt_match, &pdev->dev);
-	
+	/* HTC_START_sungfeng klocwork */
 	if (!match) {
 		pr_err("%s:%d\n", __func__, __LINE__);
 		return -EINVAL;
 	}
-	
+	/* HTC_END */
 	rc = msm_sensor_platform_probe(pdev, match->data);
 	return rc;
 }
@@ -813,6 +893,7 @@ static void __exit vd6869_exit_module(void)
 	return;
 }
 
+/*HTC_START Harvey 20130628 - Porting read OTP*/
 static struct msm_sensor_fn_t vd6869_sensor_func_tbl = {
 	.sensor_config = msm_sensor_config,
 	.sensor_power_up = msm_sensor_power_up,
@@ -820,6 +901,7 @@ static struct msm_sensor_fn_t vd6869_sensor_func_tbl = {
 	.sensor_match_id = msm_sensor_match_id,
 	.sensor_i2c_read_fuseid = vd6869_read_fuseid,
 };
+/*HTC_END*/
 
 static struct msm_sensor_ctrl_t vd6869_s_ctrl = {
 	.sensor_i2c_client = &vd6869_sensor_i2c_client,
@@ -828,7 +910,7 @@ static struct msm_sensor_ctrl_t vd6869_s_ctrl = {
 	.msm_sensor_mutex = &vd6869_mut,
 	.sensor_v4l2_subdev_info = vd6869_subdev_info,
 	.sensor_v4l2_subdev_info_size = ARRAY_SIZE(vd6869_subdev_info),
-	.func_tbl = &vd6869_sensor_func_tbl, 
+	.func_tbl = &vd6869_sensor_func_tbl, /*HTC Harvey 20130628 - Porting read OTP*/
 };
 
 module_init(vd6869_init_module);

@@ -58,23 +58,24 @@ extern int get_partition_num_by_name(char *name);
 
 #endif
 
-#if defined(CONFIG_MACH_DUMMY)
+//NFC++
+#if defined(CONFIG_MACH_EYE_UL)
 #define PN547_I2C_POWEROFF_SEQUENCE_FOR_EYE
-#elif defined(CONFIG_MACH_DUMMY)
+#elif defined(CONFIG_MACH_EYE_WHL)
 #define PN547_I2C_POWEROFF_SEQUENCE_FOR_EYE
-#elif defined(CONFIG_MACH_DUMMY)
+#elif defined(CONFIG_MACH_EYE_WL)
 #define PN547_I2C_POWEROFF_SEQUENCE_FOR_EYE
-#elif defined(CONFIG_MACH_DUMMY)
+#elif defined(CONFIG_MACH_MEC_TL)
 #define PN547_I2C_POWEROFF_SEQUENCE_FOR_MEC
-#elif defined(CONFIG_MACH_DUMMY)
+#elif defined(CONFIG_MACH_MEC_WHL)
 #define PN547_I2C_POWEROFF_SEQUENCE_FOR_MEC
-#elif defined(CONFIG_MACH_DUMMY)
+#elif defined(CONFIG_MACH_MEC_UL)
 #define PN547_I2C_POWEROFF_SEQUENCE_FOR_MEC
-#elif defined(CONFIG_MACH_DUMMY)
+#elif defined(CONFIG_MACH_MEC_DUG)
 #define PN547_I2C_POWEROFF_SEQUENCE_FOR_MEC
-#elif defined(CONFIG_MACH_DUMMY)
+#elif defined(CONFIG_MACH_MEC_DWG)
 #define PN547_I2C_POWEROFF_SEQUENCE_FOR_MEC
-#elif defined(CONFIG_MACH_DUMMY)
+#elif defined(CONFIG_MACH_B2_UL)
 #define PN547_I2C_POWEROFF_SEQUENCE_FOR_B2
 #else
 #endif
@@ -84,6 +85,7 @@ extern int get_partition_num_by_name(char *name);
 #define SR_I2C_SCL     11
 #define SR_I2C_SDA     10
 extern void force_disable_PM8941_VREG_ID_L22(void);
+//Disable LDO22
 #endif
 #if defined(PN547_I2C_POWEROFF_SEQUENCE_FOR_MEC)
 #define SR_I2C_SCL     11

@@ -790,6 +790,76 @@ void mmc_start_delayed_bkops(struct mmc_card *card)
 }
 EXPORT_SYMBOL(mmc_start_delayed_bkops);
 
+int mmc_card_start_bkops(struct mmc_card *card)
+{
+	int err = 0;
+	unsigned long flags;
+	struct mmc_host *host = card->host;
+
+	
+	if ((powersave_enabled == PP_EXTREMELY_POWERSAVE) && !ac_status)  {
+		pr_debug("%s: skip bkops due to extreme powersave mode\n", __func__);
+		return 0;
+	}
+
+	mmc_claim_host(host);
+	err = __mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
+			EXT_CSD_BKOPS_START, 1, 0, false, false);
+	if (err)
+		pr_err("%s: error %d starting bkops\n",
+				mmc_hostname(host), err);
+	else {
+		pr_info("%s: start bkops\n", mmc_hostname(host));
+		spin_lock_irqsave(&host->lock, flags);
+		mmc_card_set_doing_bkops(card);
+		spin_unlock_irqrestore(&host->lock, flags);
+	}
+	mmc_release_host(host);
+
+	return err;
+}
+EXPORT_SYMBOL(mmc_card_start_bkops);
+
+int mmc_card_stop_bkops(struct mmc_card *card)
+{
+	int err = -1;
+	u32 status;
+	int complete = 0;
+	unsigned long flags;
+	struct mmc_host *host = card->host;
+
+	if (!mmc_card_doing_bkops(card))
+		return 1;
+
+	mmc_rpm_hold(host, &card->dev);
+	mmc_claim_host(host);
+	err = mmc_send_status(card, &status);
+	mmc_release_host(host);
+	if (err) {
+		pr_err("%s: Get card status fail, err %d\n",
+				mmc_hostname(host), err);
+		goto out;
+	}
+
+	if (R1_CURRENT_STATE(status) == R1_STATE_PRG) {
+		err = mmc_interrupt_hpi(host->card);
+		if (err)
+			pr_err("%s: send hpi fail, err %d\n",
+					mmc_hostname(host), err);
+	} else
+		complete = 1;
+
+	MMC_UPDATE_BKOPS_STATS_HPI(host->card->bkops_info.bkops_stats);
+out:
+	mmc_rpm_release(host, &card->dev);
+	spin_lock_irqsave(&host->lock, flags);
+	pr_info("%s: bkops %s\n", mmc_hostname(host),
+			complete ? "completed" : "interrupted");
+	mmc_card_clr_doing_bkops(card);
+	spin_unlock_irqrestore(&host->lock, flags);
+
+	return err;
+}
 void mmc_start_bkops(struct mmc_card *card, bool from_exception)
 {
 	int err;
@@ -850,6 +920,12 @@ void mmc_start_bkops(struct mmc_card *card, bool from_exception)
 			card->ext_csd.raw_bkops_status,
 			from_exception);
 	}
+
+#ifdef CONFIG_MMC_NEED_BKOPS_IN_SUSPEND
+	
+	if (card->ext_csd.raw_bkops_status > 0)
+		mmc_card_set_need_bkops_in_suspend(card);
+#endif
 
 	if (from_exception) {
 		pr_debug("%s: %s: Level %d from exception, exit",
@@ -3457,7 +3533,8 @@ int mmc_suspend_host(struct mmc_host *host)
 
 		if (!err) {
 			if (host->bus_ops->suspend) {
-				if (mmc_is_mmc_host(host) && host->card) {
+				if (mmc_is_mmc_host(host) &&
+					host->card && !mmc_card_need_bkops_in_suspend(host->card)) {
 					err = mmc_stop_bkops(host->card);
 					if (err)
 						goto stop_bkops_err;
@@ -3484,7 +3561,23 @@ int mmc_suspend_host(struct mmc_host *host)
 	}
 	mmc_bus_put(host);
 
-	if (!err && !mmc_card_keep_power(host))
+	if (!err && host->card && mmc_card_need_bkops_in_suspend(host->card)) {
+#ifdef CONFIG_MMC_CLKGATE
+		unsigned long flags;
+
+		cancel_delayed_work_sync(&host->clk_gate_work);
+		mutex_lock(&host->clk_gate_mutex);
+		spin_lock_irqsave(&host->clk_lock, flags);
+		if (!host->clk_gated) {
+			spin_unlock_irqrestore(&host->clk_lock, flags);
+			mmc_gate_clock(host);
+		}
+		else {
+			spin_unlock_irqrestore(&host->clk_lock, flags);
+		}
+		mutex_unlock(&host->clk_gate_mutex);
+#endif
+	} else if (!err && !mmc_card_keep_power(host))
 		mmc_power_off(host);
 
 	return err;
@@ -3509,24 +3602,27 @@ int mmc_resume_host(struct mmc_host *host)
 	}
 	#endif
 
-	if (host->bus_ops && !host->bus_dead) {
-		if (!mmc_card_keep_power(host)) {
-			mmc_power_up(host);
-			mmc_select_voltage(host, host->ocr);
-			if (mmc_card_sdio(host->card) &&
-					(host->caps & MMC_CAP_POWER_OFF_CARD)) {
-				pm_runtime_disable(&host->card->dev);
-				pm_runtime_set_active(&host->card->dev);
-				pm_runtime_enable(&host->card->dev);
+	if (!((host->card) && mmc_card_mmc(host->card) &&
+				mmc_card_need_bkops_in_suspend(host->card))) {
+		if (host->bus_ops && !host->bus_dead) {
+			if (!mmc_card_keep_power(host)) {
+				mmc_power_up(host);
+				mmc_select_voltage(host, host->ocr);
+				if (mmc_card_sdio(host->card) &&
+						(host->caps & MMC_CAP_POWER_OFF_CARD)) {
+					pm_runtime_disable(&host->card->dev);
+					pm_runtime_set_active(&host->card->dev);
+					pm_runtime_enable(&host->card->dev);
+				}
 			}
-		}
-		BUG_ON(!host->bus_ops->resume);
-		err = host->bus_ops->resume(host);
-		if (err) {
-			pr_warning("%s: error %d during resume "
-					"(card was removed?)\n",
-					mmc_hostname(host), err);
-			err = 0;
+			BUG_ON(!host->bus_ops->resume);
+			err = host->bus_ops->resume(host);
+			if (err) {
+				pr_warning("%s: error %d during resume "
+						"(card was removed?)\n",
+						mmc_hostname(host), err);
+				err = 0;
+			}
 		}
 	}
 	host->pm_flags &= ~MMC_PM_KEEP_POWER;

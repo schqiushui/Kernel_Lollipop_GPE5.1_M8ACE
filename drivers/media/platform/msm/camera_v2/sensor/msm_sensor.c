@@ -19,24 +19,29 @@
 #include <mach/rpm-regulator.h>
 #include <mach/rpm-regulator-smd.h>
 #include <linux/regulator/consumer.h>
+//HTC_START
 #include <mach/devices_cmdline.h>
+//HTC_END
 
+/*HTC_START*/
 #ifdef CONFIG_RAWCHIPII
 #include "yushanII.h"
 #include "ilp0100_ST_api.h"
 #include "ilp0100_customer_sensor_config.h"
 #endif
+/*HTC_END*/
 #undef CDBG
 #ifdef CONFIG_MSMB_CAMERA_DEBUG
 #define CDBG(fmt, args...) pr_info("[CAM] : " fmt, ##args)
 #else
 #define CDBG(fmt, args...) do { } while (0)
 #endif
- 
-static int gpio_558_index = 0; 
-static int gpio_557_index = 0; 
-static int gpio_430_index = 0; 
-static int gpio_429_index = 0; 
+/*HTC_START*/ //Avoid controling the same GPIO in multiple sensors.
+static int gpio_558_index = 0; //For PMIC GPIO 23
+static int gpio_557_index = 0; //For PMIC GPIO 22
+static int gpio_430_index = 0; //For PMIC GPIO 23
+static int gpio_429_index = 0; //For PMIC GPIO 22
+/*HTC_END*/
 static int32_t msm_sensor_enable_i2c_mux(struct msm_camera_i2c_conf *i2c_conf)
 {
 	struct v4l2_subdev *i2c_mux_sd =
@@ -353,7 +358,8 @@ static int32_t msm_sensor_get_dt_vreg_data(struct device_node *of_node,
 			sensordata->cam_vreg[i].op_mode);
 	}
 
-#ifndef CONFIG_MACH_DUMMY
+#ifndef CONFIG_MACH_A11_UL
+/*HTC_START*/
 	rc = of_property_read_u32_array(of_node, "qcom,cam-vreg-gpios-index",
 		vreg_array, count);
 	if (rc < 0) {
@@ -365,6 +371,7 @@ static int32_t msm_sensor_get_dt_vreg_data(struct device_node *of_node,
 		CDBG("%s cam_vreg[%d].gpios_index = %d\n", __func__, i,
 			sensordata->cam_vreg[i].gpios_index);
 	}
+/*HTC_END*/
 #endif
 
 	kfree(vreg_array);
@@ -377,6 +384,7 @@ ERROR1:
 	return rc;
 }
 
+/* HTC_START Steven.CW_Wu 20131206 - porting ov13850 and NCP6924 */
 static int32_t msm_sensor_get_dt_ncp6924_vreg_data(struct device_node *of_node,
 	struct msm_camera_sensor_board_info *sensordata)
 {
@@ -444,6 +452,7 @@ ERROR1:
 	sensordata->num_vreg = 0;
 	return rc;
 }
+/* HTC_END Steven.CW_Wu 20131206 - porting ov13850 and NCP6924 */
 
 int32_t msm_sensor_get_dt_gpio_req_tbl(struct device_node *of_node,
 	struct msm_camera_gpio_conf *gconf, uint16_t *gpio_array,
@@ -749,6 +758,7 @@ int32_t msm_sensor_init_gpio_pin_tbl(struct device_node *of_node,
 		goto ERROR;
 	}
 
+/*HTC_START*/
 	if (of_property_read_bool(of_node, "qcom,gpio-vcm-pwd") == true) {
 		rc = of_property_read_u32(of_node, "qcom,gpio-vcm-pwd", &val);
 		if (rc < 0) {
@@ -783,6 +793,7 @@ int32_t msm_sensor_init_gpio_pin_tbl(struct device_node *of_node,
 		CDBG("%s qcom,gpio-cam-id %d\n", __func__,
 			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_CAMID]);
 	}
+/*HTC_END*/
 	return 0;
 
 ERROR:
@@ -836,11 +847,11 @@ static int32_t msm_sensor_get_dt_data(struct device_node *of_node,
 	uint16_t *gpio_array = NULL;
 	uint16_t gpio_array_size = 0;
 	uint32_t id_info[3];
-	
-#if defined(CONFIG_MACH_DUMMY) || defined(CONFIG_MACH_DUMMY) || defined(CONFIG_MACH_DUMMY) || defined(CONFIG_MACH_DUMMY) || defined(CONFIG_MACH_DUMMY)
-	char *HWver;
+	/*HTC_START*/
+#if defined(CONFIG_MACH_MEC_DUG) || defined(CONFIG_MACH_MEC_DWG) || defined(CONFIG_MACH_MEC_TL) || defined(CONFIG_MACH_MEC_UL) || defined(CONFIG_MACH_MEC_WHL)
+	char *HWver;//check CUP version for MEC 8974AA or 8974AC
 #endif
-	
+	/*HTC_END*/
 	s_ctrl->sensordata = kzalloc(sizeof(
 		struct msm_camera_sensor_board_info),
 		GFP_KERNEL);
@@ -867,12 +878,14 @@ static int32_t msm_sensor_get_dt_data(struct device_node *of_node,
 		goto ERROR1;
 	}
 
-#if defined(CONFIG_MACH_DUMMY) || defined(CONFIG_MACH_DUMMY) || defined(CONFIG_MACH_DUMMY) || defined(CONFIG_MACH_DUMMY) || defined(CONFIG_MACH_DUMMY)
-    
+/*HTC_START*/
+#if defined(CONFIG_MACH_MEC_DUG) || defined(CONFIG_MACH_MEC_DWG) || defined(CONFIG_MACH_MEC_TL) || defined(CONFIG_MACH_MEC_UL) || defined(CONFIG_MACH_MEC_WHL)
+    //If CPU is 8974_AA overwrite sensordata->sensor_name
 if(strcmp(sensordata->sensor_name, "ov13850") ==0)
 {
     HWver = board_HWver();
     CDBG("%s androidboot.hwversion  %s \n", __func__, HWver);
+//hwversion : 8974AA = A, 8974AB = B, 8974AC = C
     if (strcmp(HWver, "A") == 0)
     {
         CDBG("%s CPU is 8974_AA overwrite sensordata->sensor_name\n", __func__);
@@ -887,6 +900,7 @@ if(strcmp(sensordata->sensor_name, "ov13850") ==0)
     }
 }
 #endif
+/*HTC_END*/
 
 	rc = of_property_read_u32(of_node, "qcom,sensor-mode",
 		&sensordata->sensor_init_params->modes_supported);
@@ -911,7 +925,7 @@ if(strcmp(sensordata->sensor_name, "ov13850") ==0)
 	CDBG("%s qcom,mount-angle %d, rc %d\n", __func__,
 		sensordata->sensor_init_params->sensor_mount_angle, rc);
 	if (rc < 0) {
-		
+		/* Set default mount angle */
 		sensordata->sensor_init_params->sensor_mount_angle = 0;
 		rc = 0;
 	}
@@ -921,7 +935,7 @@ if(strcmp(sensordata->sensor_name, "ov13850") ==0)
 	CDBG("%s qcom,cci-master %d, rc %d\n", __func__, s_ctrl->cci_i2c_master,
 		rc);
 	if (rc < 0) {
-		
+		/* Set default master 0 */
 		s_ctrl->cci_i2c_master = MASTER_0;
 		rc = 0;
 	}
@@ -938,7 +952,7 @@ if(strcmp(sensordata->sensor_name, "ov13850") ==0)
 #endif
 
 
-	
+	/* HTC_START Steven.CW_Wu 20131206 - porting ov13850 and NCP6924 */
 	rc = of_property_read_u32(of_node, "htc,pm-ncp6924",
 		&sensordata->pm_ncp6924);
 	CDBG("%s qcom,pm_ncp6924 %d, rc %d\n", __func__,
@@ -947,7 +961,7 @@ if(strcmp(sensordata->sensor_name, "ov13850") ==0)
 		pr_info("%s pm-ncp6924 not defined %d\n", __func__, rc);
 		sensordata->pm_ncp6924 = 0;
 	}
-	
+	/* HTC_END Steven.CW_Wu 20131206 - porting ov13850 and NCP6924 */
 
 	rc = msm_sensor_get_sub_module_index(of_node, sensordata);
 	if (rc < 0) {
@@ -955,13 +969,13 @@ if(strcmp(sensordata->sensor_name, "ov13850") ==0)
 		goto ERROR1;
 	}
 
-	
+	/* Get sensor mount angle */
 	rc = of_property_read_u32(of_node, "qcom,mount-angle",
 		&sensordata->sensor_info->sensor_mount_angle);
 	CDBG("%s qcom,mount-angle %d, rc %d\n", __func__,
 		sensordata->sensor_info->sensor_mount_angle, rc);
 	if (rc < 0) {
-		
+		/* Invalidate mount angle flag */
 		pr_err("%s Default sensor mount angle %d\n",
 					__func__, __LINE__);
 		sensordata->sensor_info->is_mount_angle_valid = 0;
@@ -991,7 +1005,7 @@ if(strcmp(sensordata->sensor_name, "ov13850") ==0)
 		rc = 0;
 	}
 
-	
+	//HTC_START
 	rc = of_property_read_u32(of_node, "htc,mirror-flip",
 		&sensordata->sensor_info->sensor_mirror_flip);
 	if (rc < 0) {
@@ -1010,7 +1024,7 @@ if(strcmp(sensordata->sensor_name, "ov13850") ==0)
 		pr_info("%s htc,camid-value %d, rc %d\n", __func__,
 		sensordata->camid_value, rc);
 
-	
+	//HTC_END
 
 	rc = msm_sensor_get_dt_csi_data(of_node, sensordata);
 	if (rc < 0) {
@@ -1018,7 +1032,7 @@ if(strcmp(sensordata->sensor_name, "ov13850") ==0)
 		goto ERROR1;
 	}
 
-	
+	/* HTC_START Steven.CW_Wu 20131206 - porting ov13850 and NCP6924 */
   if (sensordata->pm_ncp6924) {
     rc = msm_sensor_get_dt_ncp6924_vreg_data(of_node, sensordata);
 		if (rc < 0) {
@@ -1032,7 +1046,7 @@ if(strcmp(sensordata->sensor_name, "ov13850") ==0)
 			goto ERROR2;
 		}
   }
-	
+	/* HTC_END Steven.CW_Wu 20131206 - porting ov13850 and NCP6924 */
 
 	sensordata->gpio_conf = kzalloc(sizeof(struct msm_camera_gpio_conf),
 		GFP_KERNEL);
@@ -1105,7 +1119,7 @@ if(strcmp(sensordata->sensor_name, "ov13850") ==0)
 	sensordata->slave_info->sensor_id_reg_addr = id_info[1];
 	sensordata->slave_info->sensor_id = id_info[2];
 
-	
+	/*Optional property, don't return error if absent */
 	ret = of_property_read_string(of_node, "qcom,vdd-cx-name",
 		&sensordata->misc_regulator);
 	CDBG("%s qcom,misc_regulator %s, rc %d\n", __func__,
@@ -1205,6 +1219,7 @@ static struct msm_cam_clk_info cam_8974_clk_info[] = {
 	[SENSOR_CAM_CLK] = {"cam_clk", 0},
 };
 
+/* HTC_START Steven.CW_Wu 20131206 - porting ov13850 and NCP6924 */
 int msm_camera_config_single_ncp6924_vreg(struct device *dev,
  struct camera_ncp6924_vreg_t *ncp6924_vreg, struct regulator **reg_ptr, int config)
 {
@@ -1216,9 +1231,9 @@ int msm_camera_config_single_ncp6924_vreg(struct device *dev,
 		if (IS_ERR(*reg_ptr)) {
 			pr_err("%s: %s get failed\n", __func__,
 				ncp6924_vreg->reg_name);
-			
+			/*htc start: clean_li added for klocwork issue 5075*/
 			regulator_put(*reg_ptr);
-			
+			/*htc end: clean_li added for klocwork issue 5075*/
 			*reg_ptr = NULL;
 			goto vreg_get_fail;
 		}
@@ -1256,6 +1271,7 @@ vreg_set_voltage_fail:
 vreg_get_fail:
 	return -ENODEV;
 }
+/* HTC_START Steven.CW_Wu 20131206 - porting ov13850 and NCP6924 */
 
 int32_t msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 {
@@ -1264,7 +1280,7 @@ int32_t msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	struct msm_sensor_power_setting *power_setting = NULL;
 	struct msm_camera_sensor_board_info *data = s_ctrl->sensordata;
 	struct camera_vreg_t *cam_vreg;
-	struct camera_ncp6924_vreg_t *ncp6924_vreg;	
+	struct camera_ncp6924_vreg_t *ncp6924_vreg;	/* HTC_START Steven.CW_Wu 20131206 - porting ov13850 and NCP6924 */
 	uint32_t retry = 0;
 	s_ctrl->stop_setting_valid = 0;
 
@@ -1324,14 +1340,14 @@ int32_t msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 			pr_debug("%s:%d gpio set val %d\n", __func__, __LINE__,
 				data->gpio_conf->gpio_num_info->gpio_num
 				[power_setting->seq_val]);
-			 
+			/*HTC_START*/ //Avoid control the same GPIO in multiple sensors.
 			if ( data->gpio_conf->gpio_num_info->gpio_num[power_setting->seq_val] == 429)
 			{
 				gpio_429_index ++;
 			}
 			if ( data->gpio_conf->gpio_num_info->gpio_num[power_setting->seq_val] == 430)
 				gpio_430_index ++;
-			
+			/*HTC_END*/
 			gpio_set_value_cansleep(
 				data->gpio_conf->gpio_num_info->gpio_num
 				[power_setting->seq_val],
@@ -1348,7 +1364,7 @@ int32_t msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 			if (cam_vreg->type == REG_GPIO) {
 				unsigned cam_vreg_gpio;
 				cam_vreg_gpio = data->gpio_conf->cam_gpio_req_tbl[cam_vreg->gpios_index].gpio;
-				 
+				/*HTC_START*/ //Avoid controling the same GPIO in multiple sensors.
 				if (cam_vreg_gpio == 558)
 				{
 				    gpio_558_index ++;
@@ -1365,7 +1381,7 @@ int32_t msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 				{
 				    gpio_429_index ++;
 				}
-				
+				/*HTC_END*/
 				gpio_direction_output(cam_vreg_gpio, power_setting->config_val);
 			} else {
 				msm_camera_config_single_vreg(s_ctrl->dev,
@@ -1374,7 +1390,7 @@ int32_t msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 					1);
 			}
 			break;
-		
+		/* HTC_START Steven.CW_Wu 20131206 - porting ov13850 and NCP6924 */
     case SENSOR_VREG_NCP6924:
 			if (power_setting->seq_val >= CAM_VREG_MAX) {
 				pr_err("%s vreg index %d >= max %d\n", __func__,
@@ -1386,12 +1402,12 @@ int32_t msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 			ncp6924_vreg = &data->cam_ncp6924_vreg[power_setting->seq_val];
       msm_camera_config_single_ncp6924_vreg(s_ctrl->dev, ncp6924_vreg, (struct regulator **)&power_setting->data[0], 1);
       break;
-		
+		/* HTC_END Steven.CW_Wu 20131206 - porting ov13850 and NCP6924 */
 		case SENSOR_I2C_MUX:
 			if (data->i2c_conf && data->i2c_conf->use_i2c_mux)
 				msm_sensor_enable_i2c_mux(data->i2c_conf);
 			break;
-		
+		//HTC_START
 		case SENSOR_CHECK_CAMID:
 			if ((data->gpio_conf->gpio_num_info->valid[SENSOR_GPIO_CAMID] != 1)||(data->camid_value == 0xFF))
 				break;
@@ -1402,7 +1418,7 @@ int32_t msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 				goto power_up_failed;
 			}
 			break;
-		
+		//HTC_END
 		default:
 			pr_err("%s error power seq type %d\n", __func__,
 				power_setting->seq_type);
@@ -1465,15 +1481,15 @@ power_up_failed:
 				0);
 			break;
 		case SENSOR_GPIO:
-			
+			/* HTC_START , add to fix Klocwork issue */
 			if (data->gpio_conf->gpio_num_info == NULL) {
 				pr_err("%s data->gpio_conf->gpio_num_info is NULL\n", __func__);
 				break;
 			}
-			
+			/* HTC_END */
 
-		
-			 
+		/*HTC_START*/
+			/*HTC_START*/ //Avoid control the same GPIO in multiple sensors.
 			if (data->gpio_conf->gpio_num_info->gpio_num[power_setting->seq_val] == 429)
 			{
 				gpio_429_index --;
@@ -1489,7 +1505,7 @@ power_up_failed:
 					break;
 				gpio_430_index = 0;
 			}
-			
+			/*HTC_END*/
 			if(power_setting->config_val == GPIO_OUT_HIGH)
 				gpio_set_value_cansleep(
 					data->gpio_conf->gpio_num_info->gpio_num
@@ -1498,14 +1514,14 @@ power_up_failed:
 				gpio_set_value_cansleep(
 					data->gpio_conf->gpio_num_info->gpio_num
 					[power_setting->seq_val], GPIOF_OUT_INIT_HIGH);
-		
+		/*HTC_END*/
 			break;
 		case SENSOR_VREG:
 			cam_vreg = &data->cam_vreg[power_setting->seq_val];
 			if (cam_vreg->type == REG_GPIO) {
 				unsigned cam_vreg_gpio;
 				cam_vreg_gpio = data->gpio_conf->cam_gpio_req_tbl[cam_vreg->gpios_index].gpio;
-				 
+				/*HTC_START*/ //Avoid control the same GPIO in multiple sensors.
 				if (cam_vreg_gpio == 558)
 				{
 				    gpio_558_index --;
@@ -1539,7 +1555,7 @@ power_up_failed:
 				    }
 				}
 				else
-				
+				/*HTC_END*/
 				gpio_direction_output(cam_vreg_gpio, 0);
 			} else {
 				msm_camera_config_single_vreg(s_ctrl->dev,
@@ -1548,12 +1564,12 @@ power_up_failed:
 					0);
 			}
 			break;
-		
+		/* HTC_START Steven.CW_Wu 20131206 - porting ov13850 and NCP6924 */
 		case SENSOR_VREG_NCP6924:
 			ncp6924_vreg = &data->cam_ncp6924_vreg[power_setting->seq_val];
 			msm_camera_config_single_ncp6924_vreg(s_ctrl->dev, ncp6924_vreg, (struct regulator **)&power_setting->data[0], 0);
 			break;
-		
+		/* HTC_END Steven.CW_Wu 20131206 - porting ov13850 and NCP6924 */
 		case SENSOR_I2C_MUX:
 			if (data->i2c_conf && data->i2c_conf->use_i2c_mux)
 				msm_sensor_disable_i2c_mux(data->i2c_conf);
@@ -1583,7 +1599,7 @@ int32_t msm_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 	struct msm_sensor_power_setting *power_setting = NULL;
 	struct msm_camera_sensor_board_info *data = s_ctrl->sensordata;
 	struct camera_vreg_t *cam_vreg;
-	struct camera_ncp6924_vreg_t *ncp6924_vreg;	
+	struct camera_ncp6924_vreg_t *ncp6924_vreg;	/* HTC_START Steven.CW_Wu 20131206 - porting ov13850 and NCP6924 */
 
 
 	s_ctrl->stop_setting_valid = 0;
@@ -1616,8 +1632,8 @@ int32_t msm_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 					SENSOR_GPIO_MAX);
 				continue;
 			}
-		
-			 
+		/*HTC_START*/
+			/*HTC_START*/ //Avoid control the same GPIO in multiple sensors.
 			if (data->gpio_conf->gpio_num_info->gpio_num[power_setting->seq_val] == 429)
 			{
 				gpio_429_index --;
@@ -1633,7 +1649,7 @@ int32_t msm_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 					break;
 				gpio_430_index = 0;
 			}
-			
+			/*HTC_END*/
 			if(power_setting->config_val == GPIO_OUT_HIGH)
 				gpio_set_value_cansleep(
 					data->gpio_conf->gpio_num_info->gpio_num
@@ -1642,7 +1658,7 @@ int32_t msm_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 				gpio_set_value_cansleep(
 					data->gpio_conf->gpio_num_info->gpio_num
 					[power_setting->seq_val], GPIOF_OUT_INIT_HIGH);
-		
+		/*HTC_END*/
 			break;
 		case SENSOR_VREG:
 			if (power_setting->seq_val >= CAM_VREG_MAX) {
@@ -1655,7 +1671,7 @@ int32_t msm_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 			if (cam_vreg->type == REG_GPIO) {
 				unsigned cam_vreg_gpio;
 				cam_vreg_gpio = data->gpio_conf->cam_gpio_req_tbl[cam_vreg->gpios_index].gpio;
-				 
+				/*HTC_START*/ //Avoid control the same GPIO in multiple sensors.
 				if (cam_vreg_gpio == 558)
 				{
 				    gpio_558_index --;
@@ -1697,7 +1713,7 @@ int32_t msm_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 				        pr_info("%s skip power down gpio_429_index: %d\n", __func__, gpio_429_index);
 				}
 				else
-				
+				/*HTC_END*/
 				gpio_direction_output(cam_vreg_gpio, 0);
 			} else {
 				msm_camera_config_single_vreg(s_ctrl->dev,
@@ -1706,7 +1722,7 @@ int32_t msm_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 					0);
 			}
 			break;
-		
+		/* HTC_START Steven.CW_Wu 20131206 - porting ov13850 and NCP6924 */
     case SENSOR_VREG_NCP6924:
 			if (power_setting->seq_val >= CAM_VREG_MAX) {
 				pr_err("%s vreg index %d >= max %d\n", __func__,
@@ -1718,7 +1734,7 @@ int32_t msm_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 			ncp6924_vreg = &data->cam_ncp6924_vreg[power_setting->seq_val];
 			msm_camera_config_single_ncp6924_vreg(s_ctrl->dev, ncp6924_vreg, (struct regulator **)&power_setting->data[0], 0);
       break;
-		
+		/* HTC_END Steven.CW_Wu 20131206 - porting ov13850 and NCP6924 */
 		case SENSOR_I2C_MUX:
 			if (data->i2c_conf && data->i2c_conf->use_i2c_mux)
 				msm_sensor_disable_i2c_mux(data->i2c_conf);
@@ -1787,6 +1803,9 @@ static void msm_sensor_stop_stream(struct msm_sensor_ctrl_t *s_ctrl)
 static int msm_sensor_get_af_status(struct msm_sensor_ctrl_t *s_ctrl,
 			void __user *argp)
 {
+	/* TO-DO: Need to set AF status register address and expected value
+	We need to check the AF status in the sensor register and
+	set the status in the *status variable accordingly*/
 	return 0;
 }
 
@@ -1851,12 +1870,12 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		CDBG("%s:%d mount angle valid %d value %d\n", __func__,
 			__LINE__, cdata->cfg.sensor_info.is_mount_angle_valid,
 			cdata->cfg.sensor_info.sensor_mount_angle);
-		
+		//HTC_START
 		cdata->cfg.sensor_info.sensor_mirror_flip=
 			s_ctrl->sensordata->sensor_info->sensor_mirror_flip;
 		memcpy(cdata->cfg.sensor_info.OTP_INFO, s_ctrl->sensordata->sensor_info->OTP_INFO, 5);
 		memcpy(cdata->cfg.sensor_info.fuse_id, s_ctrl->sensordata->sensor_info->fuse_id, 4);
-		
+		//HTC_END
 
 		break;
 	case CFG_GET_SENSOR_INIT_PARAMS:
@@ -1879,17 +1898,17 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			rc = -EFAULT;
 			break;
 		}
-		
+		/* Update sensor slave address */
 		if (sensor_slave_info.slave_addr) {
 			s_ctrl->sensor_i2c_client->cci_client->sid =
 				sensor_slave_info.slave_addr >> 1;
 		}
 
-		
+		/* Update sensor address type */
 		s_ctrl->sensor_i2c_client->addr_type =
 			sensor_slave_info.addr_type;
 
-		
+		/* Update power up / down sequence */
 		s_ctrl->power_setting_array =
 			sensor_slave_info.power_setting_array;
 		power_setting_array = &s_ctrl->power_setting_array;
@@ -2254,7 +2273,7 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 
 		if (!stop_setting->size) {
 			pr_err("%s:%d failed\n", __func__, __LINE__);
-			stop_setting->reg_setting = NULL; 
+			stop_setting->reg_setting = NULL; /* HTC sungfeng 20131017 */
 			rc = -EFAULT;
 			break;
 		}
@@ -2280,7 +2299,7 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 	}
 #ifdef CONFIG_RAWCHIPII
 	case CFG_RAWCHIPII_SETTING:
-		if (s_ctrl->sensordata->htc_image != 1) 
+		if (s_ctrl->sensordata->htc_image != 1) //no rawchip2, just bypass
 			break;
 
 		{
@@ -2307,7 +2326,7 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 	}
 
 	case CFG_RAWCHIPII_STOP:
-		if (s_ctrl->sensordata->htc_image != 1) 
+		if (s_ctrl->sensordata->htc_image != 1) //no rawchip2, just bypass
 			break;
 
 		if(YushanII_Get_reloadInfo() == 0){
@@ -2318,6 +2337,7 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		break;
 #endif
 
+/* HTC_START Harvey 20130628 - Porting read OTP*/
 	case CFG_I2C_IOCTL_R_OTP:
 		if (s_ctrl->func_tbl->sensor_i2c_read_fuseid == NULL) {
 			rc = -EFAULT;
@@ -2325,6 +2345,7 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		}
 		rc = s_ctrl->func_tbl->sensor_i2c_read_fuseid(cdata, s_ctrl);
 	break;
+/* HTC_END*/
 
 	default:
 		rc = -EFAULT;
@@ -2419,12 +2440,12 @@ int32_t msm_sensor_platform_probe(struct platform_device *pdev, void *data)
 	uint32_t session_id;
 	unsigned long mount_pos;
 
-	
+	//HTC_START
 	if (board_mfg_mode() == MFG_MODE_OFFMODE_CHARGING) {
 		pr_err("%s: offmode_charging, skip probe\n", __func__);
 		return -EACCES;
 	}
-	
+	//HTC_END
 
 	s_ctrl->pdev = pdev;
 	s_ctrl->dev = &pdev->dev;
@@ -2445,7 +2466,7 @@ int32_t msm_sensor_platform_probe(struct platform_device *pdev, void *data)
 		pr_err("%s failed line %d\n", __func__, __LINE__);
 		return rc;
 	}
-	
+	/* TODO: get CCI subdev */
 	cci_client = s_ctrl->sensor_i2c_client->cci_client;
 	cci_client->cci_subdev = msm_cci_get_subdev();
 	cci_client->cci_i2c_master = s_ctrl->cci_i2c_master;
@@ -2652,6 +2673,7 @@ int32_t msm_sensor_i2c_probe(struct i2c_client *client,
 	return rc;
 }
 
+/*HTC_START*/
 #include <linux/fs.h>
 #include <linux/file.h>
 #include <linux/vmalloc.h>
@@ -2721,4 +2743,5 @@ void msm_dump_otp_to_file(const char* sensor_name, const short* add, const uint8
         pr_err ("%s: fail to open file\n", __func__);
     }
 }
+/*HTC_END*/
 
